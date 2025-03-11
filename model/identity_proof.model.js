@@ -9,3 +9,15 @@ pool
         proof_type VARCHAR(30) NOT NULL UNIQUE
     )`)
   })
+
+  .then(() => {
+    console.log("Identity Proof table created");
+  })
+  .catch((err) => {
+    console.error("Error creating Identity Proof table", err);
+    throw err;
+  })
+  .finally(() => {
+    pool.end();
+    console.log("Connection closed");
+  });

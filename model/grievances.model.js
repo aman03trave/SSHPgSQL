@@ -7,10 +7,21 @@ pool
     return pool.query(`CREATE TABLE IF NOT EXISTS Grievances(
         grievance_id SERIAL PRIMARY KEY,
         complainant_id INT REFERENCES Complainants(complainant_id),
-        complaint_type_id INT REFERENCES ComplaintTypes(complaint_type_id) ON DELETE SET NULL,
+        grievance_category_id INT REFERENCES Grievance_Category(grievance_category_id) ON DELETE SET NULL,
         description TEXT NOT NULL,
-        school_id INT REFERENCES Schools(school_id) ON DELETE SET NULL,
+        school_id INT REFERENCES School(school_id) ON DELETE SET NULL,
         status VARCHAR(20) DEFAULT 'Pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
   })
+  .then(() => {
+    console.log("Grievances table created");
+  })
+  .catch((err) => {
+    console.error("Error creating Grievances table", err);
+    throw err;
+  })
+  .finally(() => {
+    pool.end();
+    console.log("Connection closed");
+  });
