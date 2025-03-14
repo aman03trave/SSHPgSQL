@@ -7,7 +7,7 @@ pool
     return pool.query(`CREATE TABLE IF NOT EXISTS BLocks(
         block_id SERIAl PRIMARY KEY,
         block_name VARCHAR(20) NOT NULL,
-        district_id INT REFERENCES Districts(district_id));`);
+        district_id VARCHAR(20) REFERENCES Districts(district_id));`);
 
   })
   .then(()=> {

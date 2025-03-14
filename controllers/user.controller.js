@@ -1,4 +1,6 @@
 import Users from '../services/user.service.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const user = new Users();
 
@@ -25,11 +27,20 @@ export const getRole_id = async (req, res, next) => {
 
 };
 
-export const Login = async(res, req, next) => {
+export const Login = async(req, res, next) => {
     try{
-        const {email, phone, password} = req.body;
-        const user = await user.findUser(email, phone, password);
-        res.json({status: true, message:"Logged in Successfully"});
+
+        const {email, password} = req.body;
+        console.log(email, password);
+        const userAuth = await user.findUser(email);
+        // const match = await bycrypt.compare(password, use.password);
+        const match = password === use.password;  
+        if (!match) {
+            throw new Error('Invalid email or password.');
+            }
+        const token = jwt.sign({ user_id: userAuth.user_id, role_id: userAuth.role_id, email: userAuth.email  }, 'schoolstudenthelpline', { expiresIn: '1h' });
+        
+        res.json({ status: true, message: 'User logged in successfully', userAuth, token });
     }
     catch (err) {
         next(err);

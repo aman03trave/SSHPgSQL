@@ -33,22 +33,14 @@ class Users {
     return result.rows[0].role_id;
     }
 
-    async findUser(email, phone, password) {
-      const result = await pool.query('SELECT * FROM Users JOIN users_phone ON user_id WHERE email = $1 OR phone = $2', [email, phone]);
+    async findUser(email) {
+      console.log('Finding user', email);
+      const result = await pool.query('SELECT * FROM Users user_id WHERE email = $1', [email]);
       if (result.rows.length === 0) {
-        throw new Error('Invalid email, phone, or password.');
+        throw new Error('Invalid email or password.');
       }
-      const user = result.rows[0];
-
-      const match = await bycrypt.compare(password, user.password);
-      if (!match) {
-        throw new Error('Invalid email, phone, or password.');
-      }
-      const token = jwt.sign({ user_id: user.user_id, role_id: user.role_id, email: user.email  }, 'schoolstudenthelpline', { expiresIn: '1h' });
-      return { user, token };
+      return result.rows[0];
     }
-
-
 }
 
 export default Users;

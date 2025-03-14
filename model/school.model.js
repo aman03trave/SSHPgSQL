@@ -7,7 +7,7 @@ pool
     return pool.query(`CREATE TABLE IF NOT EXISTS School(
         school_id SERIAL PRIMARY KEY,
         school_name VARCHAR(50) NOT NULL,
-        district_id INT REFERENCES Districts(district_id),
+        district_id VARCHAR(20) REFERENCES Districts(district_id),
         block_id INT REFERENCES Blocks(block_id)
     )`);
   })
