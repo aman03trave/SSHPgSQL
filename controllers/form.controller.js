@@ -24,7 +24,7 @@ export const getBlocks = async(req, res, next) => {
 
 export const getSchools = async(req, res, next) => {
     try {
-        const { block_id } = req.params;
+        const { block_id } = req.body;
         const schools = await form.getSchools(block_id);
         res.json({ status: true, schools });
     } catch (error) {
