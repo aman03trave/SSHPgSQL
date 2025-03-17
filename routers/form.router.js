@@ -5,7 +5,7 @@ import express from 'express';
 const expressRouter = express.Router();
 
 expressRouter.get('/districts', GetDistricts);
-expressRouter.post('/blocks', getBlocks);
+expressRouter.get('/blocks', getBlocks);
 expressRouter.get('/schools', getSchools);
 
 export default expressRouter;

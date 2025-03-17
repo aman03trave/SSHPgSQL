@@ -6,7 +6,7 @@ class Forms{
         return result.rows;
     }
     async getBlocks(district_id){
-        console.log(district_id);
+        // console.log(district_id);
         const result = await pool.query('SELECT * FROM Blocks WHERE district_id = $1', [district_id]);
         return result.rows;
     }
