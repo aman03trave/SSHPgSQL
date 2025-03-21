@@ -8,5 +8,16 @@ pool
     pool.query(`CREATE TABLE IF NOT EXISTS Action_Code(
         action_code_id SERIAL PRIMARY KEY,
         code VARCHAR(20) NOT NULL UNIQUE
+<<<<<<< HEAD
     )`);
+=======
+    );`);
+  })
+  .then(() => {
+    console.log('Action Code table created');
+  })
+  .catch((err) => {
+    console.error('Error creating Action Code table', err);
+    throw err;
+>>>>>>> add2f23 (certain changes)
   })
