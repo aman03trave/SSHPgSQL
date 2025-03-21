@@ -376,3 +376,4 @@ INSERT INTO blocks (block_id, block_name, district_id) VALUES
     (267, 'Banaigarh', 'OD-30')
 
 ON CONFLICT (block_id) DO NOTHING;
+//
