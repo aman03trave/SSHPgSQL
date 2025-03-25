@@ -376,3 +376,87 @@ INSERT INTO blocks (block_id, block_name, district_id) VALUES
     (267, 'Banaigarh', 'OD-30')
 
 ON CONFLICT (block_id) DO NOTHING;
+
+
+//populating complainant category
+
+INSERT INTO complainant_category(category_name) VALUES ('Student'),
+('Teacher'),
+('Guardian'),
+('Student Management Committee'),
+('Student Management Development Committee);
+
+-delete table grievances and grievances_category
+
+-run node grievances.model.js
+-run node grievance_category.model.js
+
+INSERT INTO grievance_category (grievance_category_id, grievance_category_name) VALUES
+('GCI-01', '25% Reserve'),
+('GCI-02', 'Access'),
+('GCI-03', 'Accident'),
+('GCI-04', 'Additional Class Room'),
+('GCI-05', 'Admission'),
+('GCI-06', 'Ama Vidyalaya'),
+('GCI-07', 'Bicycle'),
+('GCI-08', 'Buildingless School'),
+('GCI-09', 'Caste/Religion'),
+('GCI-10', 'Chief Minister Medhavruti'),
+('GCI-11', 'Child Marriage'),
+('GCI-12', 'Children with special needs'),
+('GCI-13', 'Civil Works'),
+('GCI-14', 'Closure of Schools'),
+('GCI-15', 'Co-Curricular Activities'),
+('GCI-16', 'Computer Aided Learning'),
+('GCI-17', 'Corporal Punishment'),
+('GCI-18', 'Depression'),
+('GCI-19', 'Double Engagement'),
+('GCI-20', 'Dress Code'),
+('GCI-21', 'Drinking Water'),
+('GCI-22', 'Exam'),
+('GCI-23', 'Fake Enrollment'),
+('GCI-24', 'Fake Signature'),
+('GCI-25', 'Handing over Charges'),
+('GCI-26', 'Harassment to Children'),
+('GCI-27', 'Hostel'),
+('GCI-28', 'HSC'),
+('GCI-29', 'Kitchen'),
+('GCI-30', 'Mid-Day-Meal'),
+('GCI-31', 'Miscellaneous'),
+('GCI-32', 'Misuse of School Building'),
+('GCI-33', 'Mo School'),
+('GCI-34', 'Negligence on Duties'),
+('GCI-35', 'Private Tuition'),
+('GCI-36', 'Proxy Teacher Working'),
+('GCI-37', 'Scholarship - Banishree'),
+('GCI-38', 'Scholarship - NMMS'),
+('GCI-39', 'Scholarship - NRTS'),
+('GCI-40', 'Scholarship - Pathani Samanta'),
+('GCI-41', 'Scholarship - Post Matric'),
+('GCI-42', 'Scholarship - Pre Matric'),
+('GCI-43', 'Scholarship - Prerana'),
+('GCI-44', 'Scholarship - Primary (Merit)'),
+('GCI-45', 'Scholarship - U.P (Merit)'),
+('GCI-46', 'School Consolidation'),
+('GCI-47', 'School Environment'),
+('GCI-48', 'School Management Committee'),
+('GCI-49', 'Sexual abuse'),
+('GCI-50', 'Shortage of Books'),
+('GCI-51', 'Shortage of Teacher'),
+('GCI-52', 'Sports'),
+('GCI-53', 'Taking Wine'),
+('GCI-54', 'Teacher Absenteeism'),
+('GCI-55', 'Teacher Apathy to Parents'),
+('GCI-56', 'Teacher Apathy to Students'),
+('GCI-57', 'Teaching not good'),
+('GCI-58', 'Text Book'),
+('GCI-59', 'Toilet'),
+('GCI-60', 'Transfer'),
+('GCI-61', 'Transfer Certificate'),
+('GCI-62', 'Ujjwal/Utthan'),
+('GCI-63', 'Unauthorised Collection'),
+('GCI-64', 'Uniform/Shoes'),
+('GCI-65', 'Utilisation of Grants'),
+('GCI-66', 'YouTube Class');
+
+

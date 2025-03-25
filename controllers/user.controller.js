@@ -6,9 +6,9 @@ const user = new Users();
 
 export const RegisterUser = async ( req, res, next ) => {
     try {
-        const { name, gender, age, email, password, role_name } = req.body;
+        const { name, gender, age, phone, email, password, role_name } = req.body;
         const role_id = await user.getRole_id(role_name);
-        await user.createUser(name, gender, age, email, password, role_id);
+        await user.createUser(name, gender, age, phone, email, password, role_id);
         res.json({ status: true, message: 'User registered successfully' });
     } catch (err) {
         next(err);
@@ -33,12 +33,13 @@ export const Login = async(req, res, next) => {
         const {email, password} = req.body;
         console.log(email, password);
         const userAuth = await user.findUser(email);
-        // const match = await bycrypt.compare(password, use.password);
-        const match = password === use.password;  
+        const match = await bcrypt.compare(password, userAuth.password);
+        // const match = password === userAuth.password;  
         if (!match) {
             throw new Error('Invalid email or password.');
             }
-        const token = jwt.sign({ user_id: userAuth.user_id, role_id: userAuth.role_id, email: userAuth.email  }, 'schoolstudenthelpline', { expiresIn: '1h' });
+        const token = jwt.sign({ user_id: userAuth.user_id, role_id: userAuth.role_id, email: userAuth.email  }, 
+            'schoolstudenthelpline', { expiresIn: '1h' });
         
         res.json({ status: true, message: 'User logged in successfully', userAuth, token });
     }
