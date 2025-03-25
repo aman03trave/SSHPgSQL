@@ -13,7 +13,7 @@ pool
         district_id VARCHAR(20) REFERENCES Districts(district_id) ON DELETE SET NULL,
         block_id INT REFERENCES Blocks(block_id) ON DELETE SET NULL,
         school_id INT REFERENCES School(school_id) ON DELETE SET NULL,
-        status VARCHAR(20) DEFAULT 'Pending',
+        action_code_id INT REFERENCES Actions(action_code_id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
   })
