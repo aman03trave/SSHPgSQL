@@ -6,7 +6,7 @@ pool
     console.log("Connecting to database");
     return pool.query(`CREATE TABLE IF NOT EXISTS Grievances(
         grievance_id SERIAL PRIMARY KEY,
-        complainant_id INT REFERENCES Complainants(complainant_id),
+        complainant_id VARCHAR(50) REFERENCES Complainants(complainant_id),
         grievance_category_id VARCHAR(20) REFERENCES Grievance_Category(grievance_category_id) ON DELETE SET NULL,
         title VARCHAR(100) NOT NULL,
         description TEXT NOT NULL,
