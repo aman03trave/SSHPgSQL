@@ -6,7 +6,7 @@ pool
     console.log("Connected to the database");
     return pool.query(`CREATE TABLE IF NOT EXISTS Complainants(
         complainant_id VARCHAR(50) PRIMARY KEY,
-        user_id INT REFERENCES Users(user_id) On DELETE CASCADE,
+        user_id VARCHAR(30) REFERENCES Users(user_id) On DELETE CASCADE,
         complainant_category_id INT REFERENCES Complainant_Category(complainant_category_id));`);
   })
   .then(() => {

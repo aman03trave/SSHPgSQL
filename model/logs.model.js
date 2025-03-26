@@ -6,9 +6,9 @@ pool
     console.log("Connected to the database");
 
     pool.query(`CREATE TABLE IF NOT EXISTS Logs(
-        log_id SERIAL PRIMARY KEY,
+        log_id VARCHAR(30) PRIMARY KEY,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        user_id INTEGER REFERENCES Users(user_id),
+        user_id VARCHAR(30) REFERENCES Users(user_id),
         coordinates VARCHAR(50)
     )`);
 })

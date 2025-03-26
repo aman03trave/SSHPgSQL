@@ -11,7 +11,7 @@ pool
     console.log("Connected to PostgreSQL");
     return pool.query(`
       CREATE TABLE IF NOT EXISTS Users (
-        user_id SERIAL PRIMARY KEY,
+        user_id VARCHAR(30) PRIMARY KEY,
         name VARCHAR(30),
         gender VARCHAR(10) CHECK (gender IN ('Male', 'Female', 'Other')),
         age INT CHECK(age > 0) NOT NULL,

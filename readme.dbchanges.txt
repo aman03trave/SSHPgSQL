@@ -473,4 +473,17 @@ INSERT INTO Action_Code (code) VALUES
 ('Complaint Disposed');
 
 
+-drop table logs
+-drop table complainant
+-drop table user_identity
+-alter table identity_proof alter column identity_proof_id type VARCHAR(10)
+-alter table users alter column user_id TYPE VARCHAR(30)
+-node logs.model.js
+-node user_identity.model.js
+-node identity_proof.model.js
+-node complainants.model.js
+-drop table grievances
+-node grievances.model.js
+
+
 

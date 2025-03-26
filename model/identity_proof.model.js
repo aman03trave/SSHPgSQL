@@ -5,7 +5,7 @@ pool
   .then(() => {
     console.log("Connected to the database");
     return pool.query(`CREATE TABLE IF NOT EXISTS Identity_Proof(
-        identity_proof_id SERIAL PRIMARY KEY,
+        identity_proof_id VARCHAR(10) PRIMARY KEY,
         proof_type VARCHAR(30) NOT NULL UNIQUE
     )`)
   })
