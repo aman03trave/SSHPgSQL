@@ -7,7 +7,7 @@ pool
     return pool.query(`CREATE TABLE IF NOT EXISTS Users_Identity(
         user_identity_proof_id SERIAL PRIMARY KEY,
         user_id VARCHAR(30) REFERENCES Users(user_id) ON DELETE CASCADE,
-        identity_proof_id INT REFERENCES Identity_Proof(identity_proof_id),
+        identity_proof_id VARCHAR(10) REFERENCES Identity_Proof(identity_proof_id),
         identity_proof_number VARCHAR(50) NOT NULL)`)
   })
   .then(() => {

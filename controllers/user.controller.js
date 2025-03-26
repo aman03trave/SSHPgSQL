@@ -9,9 +9,10 @@ const user = new Users();
 
 export const RegisterUser = async ( req, res, next ) => {
     try {
-        const { name, gender, age, phone, email, password, role_name } = req.body;
+        const { name, gender, age, phone, email, password, role_name, category } = req.body;
         const role_id = await user.getRole_id(role_name);
-        await user.createUser(name, gender, age, phone, email, password, role_id);
+        const category_id = await user.getCategory_id(category);
+        await user.createUser(name, gender, age, phone, email, password, role_id, category_id);
         res.json({ status: true, message: 'User registered successfully' });
     } catch (err) {
         next(err);
