@@ -487,3 +487,74 @@ INSERT INTO Action_Code (code) VALUES
 
 
 
+//populating identity_proof.model.js
+INSERT INTO Identity_Proof (identity_proof_id, proof_type) VALUES
+('I-01', 'PAN Card Number'),
+('I-02', 'BPL Card Number'),
+('I-03', 'Voter Id Number'),
+('I-04', 'PDS Number'),
+('I-05', 'Passport Number'),
+('I-06', 'Driving Licence Number'),
+('I-07', 'UID Number'),
+('I-08', 'Any Other'),
+('I-09', 'No proof available');
+
+//populating school records
+
+INSERT INTO School (school_name, district_id, block_id) VALUES
+    ('Angul Govt. High School', 'OD-01', 1),
+    ('Banarpal Public School', 'OD-01', 2),
+    ('Chhendiapada Model School', 'OD-01', 3),
+    ('Athamallik Secondary School', 'OD-01', 4),
+    ('Kishorenagar Higher Secondary School', 'OD-01', 5),
+    ('Talcher High School', 'OD-01', 6),
+    ('Kaniha Residential School', 'OD-01', 7),
+    ('Pallahara Public School', 'OD-01', 8),
+    
+    ('Balasore Govt. High School', 'OD-02', 9),
+    ('Basta Secondary School', 'OD-02', 10),
+    ('Remuna Public School', 'OD-02', 11),
+    ('Jaleswar Model School', 'OD-02', 12),
+    ('Bhograi High School', 'OD-02', 13),
+    ('Baliapal Secondary School', 'OD-02', 14),
+    ('Nilagiri Govt. School', 'OD-02', 15),
+    ('Oupada Public School', 'OD-02', 16),
+    
+    ('Bargarh High School', 'OD-03', 21),
+    ('Barpali Public School', 'OD-03', 22),
+    ('Bheden Model School', 'OD-03', 23),
+    ('Bhatli Higher Secondary School', 'OD-03', 24),
+    ('Ambabhona Govt. School', 'OD-03', 25),
+    ('Atabira High School', 'OD-03', 26),
+    ('Padampur Public School', 'OD-03', 27),
+    ('Paikmal Model School', 'OD-03', 28),
+    
+    ('Bhadrak Govt. High School', 'OD-04', 32),
+    ('Basudevpur Public School', 'OD-04', 33),
+    ('Bhandaripokhari Model School', 'OD-04', 34),
+    ('Bonth Secondary School', 'OD-04', 35),
+    ('Chandabali Higher Secondary School', 'OD-04', 36),
+    ('Dhamanagar Govt. School', 'OD-04', 37),
+    ('Tihidi Public School', 'OD-04', 38),
+    
+    ('Bolangir Govt. High School', 'OD-05', 39),
+    ('Deogam Model School', 'OD-05', 40),
+    ('Gudvella Public School', 'OD-05', 41),
+    ('Puintala Secondary School', 'OD-05', 42),
+    ('Luisinga High School', 'OD-05', 43),
+    ('Agalapur Govt. School', 'OD-05', 44),
+    ('Titilagarh Public School', 'OD-05', 45),
+    ('Saintala Model School', 'OD-05', 46),
+    
+    ('Boudh Higher Secondary School', 'OD-06', 53),
+    ('Harbhanga Govt. School', 'OD-06', 54),
+    ('Kantamal Model School', 'OD-06', 55),
+    
+    ('Cuttack Govt. High School', 'OD-07', 56),
+    ('Cuttack Sadar Public School', 'OD-07', 57),
+    ('Baranga Model School', 'OD-07', 58),
+    ('Niali Secondary School', 'OD-07', 59),
+    ('Kantapada Govt. School', 'OD-07', 60),
+    ('Salepur High School', 'OD-07', 61),
+    ('Nischintakoili Public School', 'OD-07', 62),
+    ('Mahanga Model School', 'OD-07', 63);
