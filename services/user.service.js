@@ -1,23 +1,43 @@
 import db from '../config/db.js';
-import bycrypt from 'bcrypt'
+import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import errorHandler from '../middleware/errorMiddleware.js';
 const pool = db;
 
 
 
 
 class Users {
-    async createUser(name, gender, age, phone, email, password, role_id) {
+  async CreateComplainant(category_id, user_id){
+    try {
+      console.log('Creating complaint', category_id, user_id);
+    const re = await pool.query('SELECT COUNT(*) FROM complainants');
+    const count = parseInt(re.rows[0].count, 10); // Extract count from result
+    const complainant_id = `C-${1000 + count + 1}`;
+    const result = await pool.query('INSERT INTO Complainants (complainant_id, user_id, complainant_category_id) VALUES ($1, $2, $3)', [complainant_id, user_id, category_id]);
+    console.log(result);
+    return result.rows[0];
+    } catch (error) {
+      throw new Error(`Error creating complaint: ${error.message}`);
+      // next(error);
+    }
+    
+  }
+    async createUser(name, gender, age, phone, email, password, role_id, category_id) {
         
         try{
-          const id = parseInt(name.length + Math.random() * 1000);
-
-        const hashedPassword = await bycrypt.hash(password, 20);
+          const id = await pool.query('SELECT COUNT(*) FROM users');
+          const count = parseInt(id.rows[0].count, 10); // Extract count from result
+          const user_id = `U-${1000 + count + 1}`;
+          
+        const hashedPassword = await bcrypt.hash(password, 20);
         await pool
-           .query('INSERT INTO Users (user_id, name, gender, age, email, password, role_id, phone_no) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [id, name, gender, age, email, hashedPassword, role_id, phone])
+           .query('INSERT INTO Users (user_id, name, gender, age, email, password, role_id, phone_no) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [user_id, name, gender, age, email, hashedPassword, role_id, phone]);
+
+        await this.CreateComplainant(category_id, user_id);
         }catch(e) {
           throw new Error(`Error creating user: ${e.message}`);
-          next(e);
+          // next(e);
         }
     }
 
@@ -41,6 +61,18 @@ class Users {
       console.log(result);
       return result.rows[0];
     }
+
+    async findCategory(category){
+      console.log('Finding category', category);
+      const result = await pool.query('SELECT * FROM Complainant_Category WHERE category_name = $1', [category]);
+      if (result.rows.length === 0) {
+        throw new Error('Invalid category.');
+      }
+      console.log(result);
+      return result.rows[0].complainant_category_id;
+    }
+
+    
 }
 
 export default Users;
