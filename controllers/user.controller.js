@@ -40,7 +40,7 @@ export const Login = async (req, res, next) => {
         // Check if user exists
         const userAuth = await user.findUser(email);
         if (!userAuth) {
-            return res.status(401).json({ status: false, message: 'Invalid email or password' });
+            return res.status(401).json({ status: false, message: `User doesn't exist` });
         }
 
         // Compare password securely
