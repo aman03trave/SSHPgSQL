@@ -8,8 +8,11 @@ const expressRouter = express.Router();
 expressRouter.post('/register', RegisterUser);
 expressRouter.get('/role', getRole_id);
 expressRouter.post('/login', Login);
-expressRouter.post('/refresh', refreshAccessToken);
+
 expressRouter.post('/logout', Logout);
+
+
+expressRouter.post('/refresh', refreshAccessToken);
 
 expressRouter.get('/dashboard', authenticateUser, async(req, res) => {
 

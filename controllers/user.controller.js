@@ -66,7 +66,7 @@ export const Login = async (req, res, next) => {
         // Store tokens in secure cookies
         setTokenCookie(res, accessToken, refreshToken);
 
-        res.json({ status: true, message: 'User logged in successfully' });
+        res.json({ status: true, message: 'User logged in successfully', accessToken });
     } 
     catch (err) {
         next(err);

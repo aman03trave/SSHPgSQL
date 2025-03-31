@@ -3,7 +3,9 @@ import bodyParser from 'body-parser';
 import userRouter from './routers/user.router.js'
 import formRouter from './routers/form.router.js';
 import grievanceRouter from './routers/grievance.router.js';
+import logsRouter from './routers/logs.router.js';
 import errorHandler from './middleware/errorMiddleware.js';
+import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 // const loginLimiter = rateLimit({
@@ -13,11 +15,20 @@ import cookieParser from 'cookie-parser';
 // });
 
 const app = express();
+app.use(
+    cors({
+        origin: "http://192.168.1.46:3000",  // Update to your frontend URL
+        credentials: true,  // Allow cookies
+    })
+);
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use('/api', userRouter);
 app.use('/api', formRouter);
 app.use('/api', grievanceRouter);
+app.use('/api', logsRouter);
+
+
 app.use(errorHandler);
 
 
