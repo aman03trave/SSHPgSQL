@@ -15,7 +15,7 @@ expressRouter.post('/logout', Logout);
 
 expressRouter.post('/refresh', refreshAccessToken);
 
-expressRouter.get('/dashboard', authenticateUser, async(req, res) => {
+expressRouter.get('/dashboard', verifyToken, async(req, res) => {
 
 
     try {
