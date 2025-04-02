@@ -1,6 +1,7 @@
 import {RegisterUser, getRole_id, Login, refreshAccessToken, Logout} from '../controllers/user.controller.js';
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
+import { verifyToken } from '../middleware/verifytokenMiddleware.js';
 import pool from '../config/db.js';
 
 const expressRouter = express.Router();

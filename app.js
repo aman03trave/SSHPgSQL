@@ -15,12 +15,12 @@ import cookieParser from 'cookie-parser';
 // });
 
 const app = express();
-app.use(
-    cors({
-        origin: "http://192.168.1.46:3000",  // Update to your frontend URL
-        credentials: true,  // Allow cookies
-    })
-);
+// app.use(
+//     cors({
+//         origin: "http://192.168.1.46:3000/api/login",  // Update to your frontend URL
+//         credentials: true,  // Allow cookies
+//     })
+// );
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use('/api', userRouter);
