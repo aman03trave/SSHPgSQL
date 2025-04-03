@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { setTokenCookie } from '../utils/cookieHelper.js';
+import { updateUser } from '../services/user.service.js';
 
 
 const user = new Users();
@@ -118,3 +119,27 @@ export const Logout = async (req, res, next) => {
         next(err);
     }
 };
+
+export const updateUserProfile = async (req, res) => {
+    try {
+      const user_id = req.user.user_id;
+      const { name, age, gender, phone_no } = req.body;
+  
+      // Check if required fields are provided
+      if (!name || !age || !gender || !phone_no) {
+        return res.status(400).json({ message: "All fields are required except email." });
+      }
+  
+      // Call the service to update user profile
+      const updatedUser = await updateUser(user_id, { name, age, gender, phone_no });
+  
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  };

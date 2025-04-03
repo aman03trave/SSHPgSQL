@@ -558,3 +558,11 @@ INSERT INTO School (school_name, district_id, block_id) VALUES
     ('Salepur High School', 'OD-07', 61),
     ('Nischintakoili Public School', 'OD-07', 62),
     ('Mahanga Model School', 'OD-07', 63);
+     ('Nabarangpur Govt. High School', 'OD-29', 149),
+    ('Umerkote Public School', 'OD-29', 150),
+    ('Raighar Secondary School', 'OD-29', 151),
+    ('Chandahandi Model School', 'OD-29', 152),
+    ('Nuapada Govt. High School', 'OD-30', 153),
+    ('Khariar Public School', 'OD-30', 154),
+    ('Komna Secondary School', 'OD-30', 155),
+    ('Sinapali Model School', 'OD-30', 156);

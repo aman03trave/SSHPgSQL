@@ -3,6 +3,7 @@ import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { verifyToken } from '../middleware/verifytokenMiddleware.js';
 import pool from '../config/db.js';
+import { updateUserProfile } from "../controllers/user.controller.js";
 
 const expressRouter = express.Router();
 
@@ -33,5 +34,7 @@ expressRouter.get('/dashboard', verifyToken, async(req, res) => {
         res.status(500).json({ status: false, message: 'Server error' });
     }
 });
+
+expressRouter.put("/update-profile",verifyToken, updateUserProfile);
 
 export default expressRouter;
