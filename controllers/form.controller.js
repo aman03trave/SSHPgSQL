@@ -15,8 +15,8 @@ export const GetDistricts = async (req, res, next ) => {
 
 export const getBlocks = async(req, res, next) => {
     try {
-        const { district_id } = req.body;
-        const blocks = await form.getBlocks(district_id);
+        const { district_name } = req.body;
+        const blocks = await form.getBlocks(district_name);
         res.json({ status: true, blocks });
     } catch (error) {
         next(error);

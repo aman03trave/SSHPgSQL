@@ -7,6 +7,8 @@ import logsRouter from './routers/logs.router.js';
 import errorHandler from './middleware/errorMiddleware.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import Grievance_Media from './model/grievance_media.model.js';
+import upload from './middleware/uploadPic.js';
 
 // const loginLimiter = rateLimit({
 //     windowMs: 15 * 60 * 1000, 
@@ -27,6 +29,20 @@ app.use('/api', userRouter);
 app.use('/api', formRouter);
 app.use('/api', grievanceRouter);
 app.use('/api', logsRouter);
+
+app.post('/api/grievances', upload.fields([{ name: 'image' }, { name: 'document' }]), async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(401).json({ error: "Unauthorized" });
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const grievance = new Grievance_Media({ ...req.body, userId: decoded.userId, image: req.files?.image?.[0]?.path, document: req.files?.document?.[0]?.path });
+      await grievance.save();
+      res.status(201).json({ message: "Grievance submitted successfully" });
+    } catch (err) {
+      res.status(500).json({ error: "Submission failed" });
+    }
+  });
 
 
 app.use(errorHandler);

@@ -5,8 +5,8 @@ import express from 'express';
 const expressRouter = express.Router();
 
 expressRouter.get('/districts', GetDistricts);
-expressRouter.get('/blocks', getBlocks);
-expressRouter.get('/schools', getSchools);
+expressRouter.post('/blocks', getBlocks);
+expressRouter.post('/schools', getSchools);
 expressRouter.get('/complainant_category', Complainant_Category);
 expressRouter.get('/identity_proof', Identity_Proof);
 expressRouter.get('/grievance_category', Grievance_Category);

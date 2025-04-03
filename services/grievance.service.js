@@ -18,7 +18,7 @@ class Grievances{
     //add grievance function
     async addGrievance(user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id){
         try {
-            const re = await pool.query('SELECT COUNT(*) FROM complainants');
+            const re = await pool.query('SELECT COUNT(*) FROM grievances');
             const count = parseInt(re.rows[0].count, 10); // Extract count from result
             const grievance_id = `G-${1000 + count + 1}`;
 
@@ -45,13 +45,15 @@ class Grievances{
     }
 
     // get block id
-    async getBlock(block_id){
+    async getBlock(block_name){
         try {
-            const result = await pool.query('SELECT block_id FROM Blocks WHERE block_name = $1', [block_id]);
+            console.log(block_name);
+            const result = await pool.query('SELECT block_id FROM Blocks WHERE block_name = $1', [block_name]);
+
             return result.rows[0].block_id;
             
         } catch (error) {
-            throw new Error(`Error getting block : '${block_id, error}'`)
+            throw new Error(`Error getting block : '${block_name, error}'`)
         }
     }
 
@@ -78,7 +80,7 @@ class Grievances{
     }
 
     //get grievance category id
-    async getgrievance_category(grievance_category){
+    async getgrievancecategory(grievance_category){
         try {
             const result = await pool.query('SELECT * FROM grievance_category WHERE grievance_category_name = $1 ', [grievance_category]);
             return result.rows[0].grievance_category_id;
@@ -87,6 +89,19 @@ class Grievances{
             throw new Error(`Error getting grievances : '${grievance_category, error}'`)
         }
     }
+
+    async addGrievanceMedia(grievanceId, imagePath, documentPath) {
+        const grievanceMedia = new Grievance_Media({
+            grievanceId,
+            image: imagePath,
+            document: documentPath
+        });
+
+        await grievanceMedia.save();
+        return grievanceMedia;
+    }
 }
+
+
 
 export default Grievances;

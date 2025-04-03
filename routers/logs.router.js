@@ -6,6 +6,6 @@ import express from "express";
 
 const expressRouter = express.Router();
 
-expressRouter.post("/dashboard/visit", authenticateUser, logVisit);
+expressRouter.post("/visit", logVisit);
 
 export default expressRouter;
