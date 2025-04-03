@@ -1,9 +1,13 @@
-import { addG } from "../controllers/grievance.controller.js";
+import express from "express";
+import { addGrievance } from "../controllers/grievance.controller.js";
 import { authenticateUser } from "../middleware/authMiddleware.js";
-import express from 'express';
+import {verifyToken} from '../middleware/verifytokenMiddleware.js'
+import upload from '../middleware/uploadPic.js';
 
-const expressRouter = express.Router();
 
-expressRouter.post('/form/addGrievance', authenticateUser, addG);
+const router = express.Router();
 
-export default expressRouter;
+
+router.post("/addgrievance", verifyToken, upload.fields([{ name: "image" }, { name: "document" }]), addGrievance);
+
+export default router;

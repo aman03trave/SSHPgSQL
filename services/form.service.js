@@ -9,10 +9,11 @@ class Forms{
             throw new Error(e);
         }
     }
-    async getBlocks(district_id){
+    async getBlocks(district_name){
         // console.log(district_id);
         try{
-        const result = await pool.query('SELECT * FROM Blocks WHERE district_id = $1', [district_id]);
+        const result = await pool.query(`SELECT * FROM Blocks WHERE district_id = (
+        SELECT district_id FROM Districts WHERE district_name = $1)`, [district_name]);
         return result.rows;
         }catch(e){
             throw new Error(e);

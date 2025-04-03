@@ -66,7 +66,7 @@ export const Login = async (req, res, next) => {
         // Store tokens in secure cookies
         setTokenCookie(res, accessToken, refreshToken);
 
-        res.json({ status: true, message: 'User logged in successfully', accessToken });
+        res.json({ status: true, message: 'User logged in successfully', accessToken, refreshToken });
     } 
     catch (err) {
         next(err);
@@ -75,8 +75,9 @@ export const Login = async (req, res, next) => {
 
 export const refreshAccessToken = async (req, res, next) => {
     try {
-        const refreshToken = req.cookies.refreshToken || req.headers["x-refresh-token"]; // Get token from cookie
-
+        const {refreshToken} = req.body; // Get token from cookie
+        // req.cookies.refreshToken || req.headers["x-refresh-token"] ||
+        // console.log(refreshToken);
         if (!refreshToken) {
             return res.status(403).json({ status: false, message: 'Refresh token required' });
         }
@@ -102,7 +103,7 @@ export const refreshAccessToken = async (req, res, next) => {
                 maxAge: 1 * 60 * 1000 // 15 minutes
             });
 
-            res.json({ status: true, message: 'New access token generated' });
+            res.json({ status: true, message: 'New access token generated', newAccessToken });
         });
     } catch (err) {
         next(err);
