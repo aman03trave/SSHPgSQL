@@ -27,7 +27,7 @@ export const addGrievance = async (req, res, next) => {
 
         // Save image & document in MongoDB
         if (imagePath || documentPath) {
-            await grievanceService.addGrievanceMedia(grievance.id, imagePath, documentPath);
+            await grievanceService.addGrievanceMedia(grievance.grievance_id, imagePath, documentPath);
         }
 
         res.json({ status: true, message: "Grievance added successfully", grievance });
