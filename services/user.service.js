@@ -71,29 +71,7 @@ class Users {
       return result.rows[0].complainant_category_id;
     }
 
-
-    async getUserProfile(user_id) {
-      try {
-        console.log('Fetching user profile for:', user_id);
-        
-        const result = await pool.query(
-          'SELECT user_id, name, email, phone_no,age,gender FROM Users WHERE user_id = $1',
-          [user_id]
-        );
-    
-        if (result.rows.length === 0) {
-          throw new Error('User not found');
-        }
-    
-        return result.rows[0];
-    
-      } catch (error) {
-        throw new Error(`Error fetching user profile: ${error.message}`);
-      }
-    }
-
-
-    async updateUser(user_id, { name, age, gender, phone }){
+    async updateUser (user_id, { name, age, gender, phone }){
       try {
         const result = await db.query(
           `UPDATE Users 
@@ -109,7 +87,11 @@ class Users {
         throw new Error("Database operation failed");
       }
     
-   }
-};
+    };
+    
+
+    
+}
+
 
 export default Users;
