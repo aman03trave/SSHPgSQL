@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { setTokenCookie } from '../utils/cookieHelper.js';
-import { updateUser } from '../services/user.service.js';
+
 
 
 const user = new Users();
@@ -132,7 +132,7 @@ export const updateUserProfile = async (req, res) => {
       }
   
       // Call the service to update user profile
-      const updatedUser = await updateUser(user_id, { name, age, gender, phone });
+      const updatedUser = await user.updateUser(user_id, { name, age, gender, phone });
   
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
@@ -144,3 +144,20 @@ export const updateUserProfile = async (req, res) => {
       res.status(500).json({ message: "Internal Server Error" });
     }
   };
+
+
+export const handleGetUserProfile = async (req, res) => {
+    const userId = req.user.user_id;
+  
+    try {
+      const profile = await user.getUserProfile(userId);
+  
+      if (!profile) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      res.json({ user: profile });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };  

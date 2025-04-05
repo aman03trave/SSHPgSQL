@@ -566,3 +566,45 @@ INSERT INTO School (school_name, district_id, block_id) VALUES
     ('Khariar Public School', 'OD-30', 154),
     ('Komna Secondary School', 'OD-30', 155),
     ('Sinapali Model School', 'OD-30', 156);
+
+
+
+
+no need of that column:
+
+**
+ ALTER TABLE Action_Log
+DROP COLUMN reminder_sent; 
+
+
+**
+ALTER TABLE Reminders ADD COLUMN viewed BOOLEAN DEFAULT FALSE;
+
+
+
+###Recommendation:
+Keep the Reminders table.
+
+Use your query to check if a reminder is allowed.
+
+Before inserting a new reminder, check:
+
+//for checking
+
+SELECT MAX(action_timestamp) AS last_action,
+       MAX(reminder_timestamp) AS last_reminder
+FROM Action_Log al
+LEFT JOIN Reminders r ON al.grievance_id = r.grievance_id
+WHERE al.grievance_id = $1;
+
+//when above is true insert it's time in as when last reminder was inserted
+
+INSERT INTO Reminders (grievance_id, user_id)
+VALUES ($1, $2);
+
+*** 
+ Step 2: When GRO opens/reminders are fetched → mark them as viewed
+
+UPDATE Reminders
+SET viewed = TRUE
+WHERE grievance_id = $1;  -- or user_id = GRO_id if filtered
