@@ -75,14 +75,14 @@ class Users {
     
 }
 
-export const updateUser = async (user_id, { name, age, gender, phone_no }) => {
+export const updateUser = async (user_id, { name, age, gender, phone }) => {
   try {
     const result = await db.query(
       `UPDATE Users 
        SET name = $1, age = $2, gender = $3, phone_no = $4
        WHERE user_id = $5 
        RETURNING user_id, name, age, gender, phone_no, email`,
-      [name, age, gender, phone_no, user_id]
+      [name, age, gender, phone, user_id]
     );
 
     return result.rows[0]; // Return updated user
@@ -90,6 +90,8 @@ export const updateUser = async (user_id, { name, age, gender, phone_no }) => {
     console.error("Database error:", error);
     throw new Error("Database operation failed");
   }
+
+
 };
 
 export default Users;

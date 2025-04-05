@@ -35,3 +35,14 @@ export const addGrievance = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getGrievance = async (req, res, next) => {
+    try {
+        const user_id = req.user.user_id;
+        const complainant_id = await grievanceService.getComplainant(user_id)
+        const grievance = await grievanceService.getGrievance(complainant_id);
+        res.json({ status: true, grievance });
+    } catch (error) {
+        next(error);
+    }
+}

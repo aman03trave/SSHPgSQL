@@ -1,6 +1,5 @@
 import pool from '../config/db.js'
-import Grievance_Media from '../model/grievance_media.model.js'; // Ensure the correct path
-
+import Grievance_Media from '../model/grievance_media.model.js';
 
 class Grievances{
     
@@ -102,7 +101,39 @@ class Grievances{
         await grievanceMedia.save();
         return grievanceMedia;
     }
+
+    async getGrievance(complainantId){
+        try{
+            const result = await pool.query(`SELECT g.*, a.*  FROM 
+                                            Grievances g
+                                            LEFT JOIN 
+                                            action_log a ON g.grievance_id = a.grievance_id
+                                            WHERE 
+                                            g.complainant_id = $1`, [complainantId]);
+            const grievance = result.rows;
+
+            const grievancesWithMedia = await Promise.all(
+                grievance.map(async (grievance) => {
+                    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+                    return {
+                        ...grievance,
+                        media: media ? {
+                            image: media.image,
+                            document: media.document
+                        } : null
+                    };
+                })
+            );
+    
+            return grievancesWithMedia;
+        }
+        catch(e){
+            throw new Error(`Error fetching grievance with media: ${e.message}`);
+        }
+    }
 }
+
+    
 
 
 

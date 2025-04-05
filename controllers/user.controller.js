@@ -54,7 +54,7 @@ export const Login = async (req, res, next) => {
         const accessToken = jwt.sign(
             { user_id: userAuth.user_id, role_id: userAuth.role_id, email: userAuth.email },
             process.env.JWT_SECRET, 
-            { expiresIn: '1m' } // Short expiry for security
+            { expiresIn: '15m' } // Short expiry for security
         );
 
         // Generate refresh token
@@ -93,7 +93,7 @@ export const refreshAccessToken = async (req, res, next) => {
             const newAccessToken = jwt.sign(
                 { user_id: decoded.user_id },
                 process.env.JWT_SECRET, 
-                { expiresIn: '1m' }
+                { expiresIn: '15m' }
             );
 
             // Store new access token in cookie
@@ -101,7 +101,7 @@ export const refreshAccessToken = async (req, res, next) => {
                 httpOnly: true, 
                 secure: process.env.NODE_ENV === 'production', 
                 sameSite: 'Strict',
-                maxAge: 1 * 60 * 1000 // 15 minutes
+                maxAge: 15 * 60 * 1000 // 15 minutes
             });
 
             res.json({ status: true, message: 'New access token generated', newAccessToken });
@@ -124,21 +124,21 @@ export const Logout = async (req, res, next) => {
 export const updateUserProfile = async (req, res) => {
     try {
       const user_id = req.user.user_id;
-      const { name, age, gender, phone_no } = req.body;
+      const { name, age, gender, phone } = req.body;
   
       // Check if required fields are provided
-      if (!name || !age || !gender || !phone_no) {
+      if (!name || !age || !gender || !phone) {
         return res.status(400).json({ message: "All fields are required except email." });
       }
   
       // Call the service to update user profile
-      const updatedUser = await updateUser(user_id, { name, age, gender, phone_no });
+      const updatedUser = await updateUser(user_id, { name, age, gender, phone });
   
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
   
-      res.status(200).json({ message: "Profile updated successfully", user: updatedUser });
+      res.status(200).json({ message: "Profile updated successfully", updatedUser });
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Internal Server Error" });
