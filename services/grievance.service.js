@@ -1,4 +1,6 @@
 import pool from '../config/db.js'
+import Grievance_Media from '../model/grievance_media.model.js'; // Ensure the correct path
+
 
 class Grievances{
     
@@ -23,12 +25,12 @@ class Grievances{
             const grievance_id = `G-${1000 + count + 1}`;
 
             console.log(user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id);
-            const result = await pool.query(`INSERT INTO Grievances(grievance_id, complainant_id, grievance_category_id, title, description, district_id, block_id, school_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`, 
+            const result = await pool.query(`INSERT INTO Grievances(grievance_id, complainant_id, grievance_category_id, title, description, district_id, block_id, school_id) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING grievance_id`, 
                 [grievance_id, complainant_id, grievance_category_id, title, description, district_id, block_id, school_id]);
             
             //add Action
             await this.addAction(grievance_id, user_id, 1, );
-            return result.rows[0];
+            return result.rows[0].grievance_id;
         } catch (error) {
             throw new Error(`Error lodging grievance : '${error}' `);
         }

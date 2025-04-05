@@ -24,7 +24,7 @@ export const addGrievance = async (req, res, next) => {
         const grievance = await grievanceService.addGrievance(
             user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id
         );
-
+        console.log(grievance);
         // Save image & document in MongoDB
         if (imagePath || documentPath) {
             await grievanceService.addGrievanceMedia(grievance.grievance_id, imagePath, documentPath);
