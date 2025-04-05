@@ -87,11 +87,20 @@ class Users {
         throw new Error("Database operation failed");
       }
     
-    };
+    }
+
+    async getUserProfile(user_id){
+      try {
+        const result = await pool.query('SELECT name, age, phone_no, gender FROM Users WHERE user_id = $1', [user_id]);
+        return result.rows[0];
+      } catch (error) {
+        throw new Error(`Error getting user : '${user_id, error}'`)
+      }
+    }
     
 
     
-}
+};
 
 
 export default Users;
