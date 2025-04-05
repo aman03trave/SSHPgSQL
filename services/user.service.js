@@ -91,7 +91,7 @@ class Users {
 
     async getUserProfile(userId){
       try {
-        const result = await pool.query('SELECT name, age, phone_no, gender FROM Users WHERE user_id = $1', [userId]);
+        const result = await pool.query('SELECT name, age, phone_no, gender, email FROM Users WHERE user_id = $1', [userId]);
         return result.rows[0];
       } catch (error) {
         throw new Error(`Error getting user : '${userId, error}'`)
