@@ -104,12 +104,19 @@ class Grievances{
 
     async getGrievance(complainantId){
         try{
-            const result = await pool.query(`SELECT g.*, a.*  FROM 
+            const result = await pool.query(`SELECT 
+                                            g.*, 
+                                            a.*, 
+                                            ac.*
+                                            FROM 
                                             Grievances g
                                             LEFT JOIN 
                                             action_log a ON g.grievance_id = a.grievance_id
+                                            LEFT JOIN 
+                                            action_code ac ON a.action_code_id = ac.action_code_id
                                             WHERE 
-                                            g.complainant_id = $1`, [complainantId]);
+                                            g.complainant_id = $1;
+`, [complainantId]);
             const grievance = result.rows;
 
             const grievancesWithMedia = await Promise.all(
