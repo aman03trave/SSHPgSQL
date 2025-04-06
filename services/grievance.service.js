@@ -177,9 +177,12 @@ class Grievances{
 
     async addReminder(grievance_id, user_id){
         try {
+            const remind = await pool.query(`SELECT COUNT(*) FROM Reminders`);
+            const count = parseInt(remind.rows[0].count, 10); 
+            const reminder_id = count + 1;
             
-
-            const result = await pool.query(`INSERT INTO Reminders( grievance_id, user_id) VALUES($1, $2)`, [grievance_id, user_id]);
+            console.log(grievance_id, user_id);
+            const result = await pool.query(`INSERT INTO Reminders( reminder_id, grievance_id, user_id) VALUES($1, $2, $3)`, [reminder_id, grievance_id, user_id]);
             return result.rows[0];
             
         } catch (error) {
@@ -187,9 +190,11 @@ class Grievances{
         }
     }
 
-    async getReminderStatus(grievance_id, user_id){
+    async getReminderStatus(user_id){
         try {
+            
             const result = await pool.query(`SELECT 
+                                            g.title, g.description, g.grievance_id, 
                                             CASE 
                                                 WHEN (
                                                     (MAX(a.action_timestamp) IS NULL OR NOW() - MAX(a.action_timestamp) > INTERVAL '2 hours') AND
@@ -207,14 +212,14 @@ class Grievances{
                                             LEFT JOIN 
                                                 action_log a ON g.grievance_id = a.grievance_id
                                             WHERE 
-                                                c.user_id = $1 AND g.grievance_id = $2
+                                                c.user_id = $1
                                             GROUP BY 
                                                 g.grievance_id, c.user_id;
-`, [grievance_id, user_id]);
-            return result.rows[0];
+`, [user_id]);
+            return result.rows;
             
         } catch (error) {
-            throw new Error(`Error getting reminder status : '${grievance_id, user_id, error}'`)
+            throw new Error(`Error getting reminder status : '${ user_id, error}'`)
         }
     }
 

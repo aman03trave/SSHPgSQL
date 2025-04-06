@@ -59,7 +59,7 @@ export const checkReminderEligibility = async (req, res) => {
 };
 
 export const addReminder = async (req, res) => {
-    const { grievance_id} = req.body;
+    const { grievance_id } = req.body;
     const user_id = req.user.user_id;
     try {
         const result = await grievanceService.addReminder(grievance_id, user_id);
@@ -70,10 +70,11 @@ export const addReminder = async (req, res) => {
 };
 
 export const getReminderStatus = async (req, res) => {
-    const { grievance_id} = req.body;
+    // const { grievance_id} = req.body;
     const user_id = req.user.user_id;
     try {
-        const result = await grievanceService.getReminderStatus(grievance_id, user_id);
+        const result = await grievanceService.getReminderStatus(user_id);
+        console.log(result);
         res.status(200).json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
