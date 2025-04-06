@@ -138,10 +138,86 @@ class Grievances{
             throw new Error(`Error fetching grievance with media: ${e.message}`);
         }
     }
+
+    async ReminderEligibility(user_id){
+        try {
+            const result = await pool.query(`SELECT 
+                                            g.grievance_id,
+                                            g.title,
+                                            g.description
+                                            FROM 
+                                                Grievances g
+                                            JOIN 
+                                                Complainants c ON g.complainant_id = c.complainant_id
+                                            LEFT JOIN 
+                                                Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
+                                            LEFT JOIN 
+                                                action_log a ON g.grievance_id = a.grievance_id
+                                            WHERE 
+                                                c.user_id = $1
+                                            GROUP BY 
+                                                g.grievance_id, g.title, g.description, c.user_id
+                                            HAVING 
+                                                (
+                                                    MAX(a.action_timestamp) IS NULL OR 
+                                                    AGE(NOW(), MAX(a.action_timestamp)) > INTERVAL '6 hours'
+                                                ) AND (
+                                                    MAX(r.reminder_timestamp) IS NULL OR 
+                                                    AGE(NOW(), MAX(r.reminder_timestamp)) > INTERVAL '6 hours'
+                                                );
+
+
+                                            `, [user_id]);
+            return result.rows;
+            
+        } catch (error) {
+            throw new Error(`Error getting reminder : '${user_id, error}'`)
+        }
+    }
+
+    async addReminder(grievance_id, user_id){
+        try {
+            
+
+            const result = await pool.query(`INSERT INTO Reminders( grievance_id, user_id) VALUES($1, $2)`, [grievance_id, user_id]);
+            return result.rows[0];
+            
+        } catch (error) {
+            throw new Error(`Error adding reminder : '${error}' `);
+        }
+    }
+
+    async getReminderStatus(grievance_id, user_id){
+        try {
+            const result = await pool.query(`SELECT 
+                                            CASE 
+                                                WHEN (
+                                                    (MAX(a.action_timestamp) IS NULL OR NOW() - MAX(a.action_timestamp) > INTERVAL '2 hours') AND
+                                                    (MAX(r.reminder_timestamp) IS NULL OR NOW() - MAX(r.reminder_timestamp) > INTERVAL '2 hours')
+                                                ) 
+                                                THEN TRUE 
+                                                ELSE FALSE 
+                                            END AS can_send_reminder
+                                            FROM 
+                                                Grievances g
+                                            JOIN 
+                                                Complainants c ON g.complainant_id = c.complainant_id
+                                            LEFT JOIN 
+                                                Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
+                                            LEFT JOIN 
+                                                action_log a ON g.grievance_id = a.grievance_id
+                                            WHERE 
+                                                c.user_id = $1 AND g.grievance_id = $2
+                                            GROUP BY 
+                                                g.grievance_id, c.user_id;
+`, [grievance_id, user_id]);
+            return result.rows[0];
+            
+        } catch (error) {
+            throw new Error(`Error getting reminder status : '${grievance_id, user_id, error}'`)
+        }
+    }
+
 }
-
-    
-
-
 
 export default Grievances;

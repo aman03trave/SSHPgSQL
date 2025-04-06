@@ -8,7 +8,9 @@ pool
     reminder_id SERIAL PRIMARY KEY,
     grievance_id VARCHAR(30) REFERENCES Grievances(grievance_id) ON DELETE CASCADE,
     user_id VARCHAR(30) REFERENCES Users(user_id) ON DELETE CASCADE,
-    reminder_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    reminder_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    viewed BOOLEAN DEFAULT FALSE
+    
 );`)
 })
 
