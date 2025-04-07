@@ -219,7 +219,7 @@ class Grievances{
                                                 -- either at least one reminder exists
                                                 MAX(r.reminder_timestamp) IS NOT NULL 
                                                 -- or grievance is older than 2 hours
-                                                OR NOW() - MIN(a.action_timestamp) > INTERVAL '2 hours';
+                                                OR NOW() - MIN(g.created_at) > INTERVAL '2 hours';
 
 
 
