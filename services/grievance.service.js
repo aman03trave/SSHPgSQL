@@ -215,13 +215,9 @@ class Grievances{
                                                 c.user_id = $1
                                             GROUP BY 
                                                 g.grievance_id, c.user_id
-                                            HAVING 
-                                                -- either at least one reminder exists
-                                                MAX(r.reminder_timestamp) IS NOT NULL 
-                                                -- or grievance is older than 2 hours
+                                            HAVING
+                                                MAX(r.reminder_timestamp) IS NOT NULL
                                                 OR NOW() - MIN(g.created_at) > INTERVAL '2 hours';
-
-
 
             `, [user_id]);
             return result.rows;

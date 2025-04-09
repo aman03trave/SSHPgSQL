@@ -10,6 +10,7 @@ import cookieParser from 'cookie-parser';
 import Grievance_Media from './model/grievance_media.model.js';
 import upload from './middleware/uploadPic.js';
 import { verifyToken } from './middleware/verifytokenMiddleware.js';
+import officerRouter from './routers/officer.router.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -36,6 +37,8 @@ app.use('/api', userRouter);
 app.use('/api', formRouter);
 app.use('/api', grievanceRouter);
 app.use('/api', logsRouter);
+app.use('/api', officerRouter);
+
 
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 

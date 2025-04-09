@@ -608,3 +608,9 @@ VALUES ($1, $2);
 UPDATE Reminders
 SET viewed = TRUE
 WHERE grievance_id = $1;  -- or user_id = GRO_id if filtered
+
+date:8th april '25
+INSERT into ACTION_CODE values(8, 'Grievance rejected by level 2');
+
+insert into roles values(4, 'Level 1'),
+(5, 'Level 2');
