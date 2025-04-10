@@ -5,8 +5,9 @@
 import pool from '../config/db.js';
 import Users from '../services/user.service.js';
 import Grievances from '../services/grievance.service.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import Grievance_Media from '../model/grievance_media.model.js';
+import ATR_Media from '../model/atr_media.model.js';
 
 const user = new Users();
 const form = new Grievances();
@@ -35,7 +36,11 @@ export const add_Officer = async (req, res, next) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
         const role_id = await user.getRole_id(role_name);
-        const block_id = await form.getBlock(block_name);
+
+          const block_id = await form.getBlock(block_name);
+        
+        console.log(block_id);
+        
 
         await client.query('BEGIN');
         const id = await pool.query('SELECT COUNT(*) FROM users');
@@ -96,25 +101,24 @@ export const getGrievancesByDistrict = async (req, res) => {
         WHERE 
         g.district_id = $1;
 `, [district.rows[0].district_id]);
-const grievance = result.rows;
+    const grievance = result.rows;
 
-const grievances = await Promise.all(
-grievance.map(async (grievance) => {
-const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
-return {
-...grievance,
-media: media ? {
-image: media.image,
-document: media.document
-} : null
-};
-})
-);
-    res.json(grievances);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    const grievances = await Promise.all(
+    grievance.map(async (grievance) => {
+    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+    return {
+    ...grievance,
+    media: media ? {
+    document: media.document
+    } : null
+    };
+    })
+    );
+        res.json(grievances);
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    };
 
 export const getBlockOfficersWithGrievanceCount = async (req, res) => {
   const user_id  = req.user.user_id;
@@ -140,8 +144,8 @@ export const assignGrievance = async (req, res) => {
   try {
     await pool.query('BEGIN');
     await pool.query(`
-      INSERT INTO grievance_assignment (grievance_id, assigned_by, assigned_to, level, current_status)
-      VALUES ($1, $2, $3, 2, 'assigned')
+      INSERT INTO grievance_assignment (grievance_id, assigned_by, assigned_to)
+      VALUES ($1, $2, $3)
     `, [grievance_id, user_id, assigned_to]);
     await pool.query(`
       INSERT INTO action_log (grievance_id, user_id, action_code_id)
@@ -154,6 +158,8 @@ export const assignGrievance = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//level 2 officer
 
 export const getAssignedGrievances = async (req, res) => {
   const user_id = req.user.user_id;
@@ -208,7 +214,7 @@ export const reviewATR = async (req, res) => {
 // Level 2 Officer Services
 
 export const getAssignedToMe = async (req, res) => {
-  const { user_id } = req.user;
+  const user_id  = req.user.user_id;
   try {
     const result = await pool.query(`
       SELECT g.* FROM grievances g
@@ -223,13 +229,27 @@ export const getAssignedToMe = async (req, res) => {
 
 export const uploadATR = async (req, res) => {
   const { grievance_id, atr_text } = req.body;
-  const { user_id } = req.user;
+  const user_id  = req.user.user_id;
+
+  const documentPath = req.files["document"] ? req.files["document"][0].path : null;
+
   try {
+    const id = await pool.query('SELECT COUNT(*) FROM atr_reports');
+    const count = parseInt(id.rows[0].count, 10); // Extract count from result
+    const atr_id = count + 1;
     const version = (await pool.query('SELECT COUNT(*) FROM atr_reports WHERE grievance_id = $1', [grievance_id])).rows[0].count;
+
     await pool.query(`
-      INSERT INTO atr_reports (grievance_id, generated_by, atr_text, version)
-      VALUES ($1, $2, $3, $4)
-    `, [grievance_id, user_id, atr_text, Number(version) + 1]);
+      INSERT INTO atr_reports (atr_id, grievance_id, generated_by, atr_text, version)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [atr_id, grievance_id, user_id, atr_text, Number(version) + 1]);
+
+    const grievanceMedia = new ATR_Media({
+      atr_id,
+      document: documentPath
+    });
+
+    await grievanceMedia.save();
 
     await pool.query(`
       INSERT INTO action_log (grievance_id, user_id, action_code_id)
