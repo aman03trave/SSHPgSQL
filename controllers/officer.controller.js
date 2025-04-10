@@ -29,13 +29,17 @@ export const add_Officer = async (req, res, next) => {
             district_name,
             block_name // optional for level 1
         } = req.body;
-
+        console.log(block_name);
+        let block_id = null;
+        if (block_name && block_name !== "NULL" && block_name !== "null") {
+            block_id = await form.getBlock(block_name);
+        }    
         // Check for required fields
         if (!name || !email || !phone|| !age || !gender  || !password || !role_name || !district_name) {
             return res.status(400).json({ message: "Missing required fields" });
         }
         const role_id = await user.getRole_id(role_name);
-        const block_id = await form.getBlock(block_name);
+        // const block_id = await form.getBlock(block_name);
 
         await client.query('BEGIN');
         const id = await pool.query('SELECT COUNT(*) FROM users');
@@ -140,8 +144,8 @@ export const assignGrievance = async (req, res) => {
   try {
     await pool.query('BEGIN');
     await pool.query(`
-      INSERT INTO grievance_assignment (grievance_id, assigned_by, assigned_to, level, current_status)
-      VALUES ($1, $2, $3, 2, 'assigned')
+      INSERT INTO grievance_assignment (grievance_id, assigned_by, assigned_to)
+      VALUES ($1, $2, $3)
     `, [grievance_id, user_id, assigned_to]);
     await pool.query(`
       INSERT INTO action_log (grievance_id, user_id, action_code_id)

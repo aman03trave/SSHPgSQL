@@ -10,10 +10,10 @@ const expressRouter = express.Router();
 expressRouter.post('/add_Officer', add_Officer);
 expressRouter.get('/getGrievancesByDistrict', verifyToken, getGrievancesByDistrict);
 expressRouter.get('/getBlockOfficersWithGrievanceCount', verifyToken, getBlockOfficersWithGrievanceCount);
-expressRouter.post('/assignGrievance', assignGrievance);
-expressRouter.get('/getAssignedGrievance', getAssignedGrievances);
-expressRouter.post('/reviewATR', reviewATR);
-expressRouter.get('/getAssignedToMe', getAssignedToMe);
-expressRouter.post('/uploadATR', uploadATR);
+expressRouter.post('/assignGrievance',verifyToken, assignGrievance);
+expressRouter.get('/getAssignedGrievance',verifyToken, getAssignedGrievances);
+expressRouter.post('/reviewATR',verifyToken,reviewATR);
+expressRouter.get('/getAssignedToMe',verifyToken, getAssignedToMe);
+expressRouter.post('/uploadATR',verifyToken, uploadATR);
 
 export default expressRouter;
