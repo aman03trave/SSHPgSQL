@@ -86,39 +86,56 @@ export const add_Officer = async (req, res, next) => {
 
 export const getGrievancesByDistrict = async (req, res) => {
   const user_id = req.user.user_id;
-  try {
-    const district = await pool.query('SELECT district_id FROM officer_info WHERE officer_id = $1', [user_id]);
-    console.log(district.rows[0].district_id);
-    // const grievances = await pool.query(`
-    //   SELECT * FROM grievances g
-    //   WHERE g.district_id = $1
-    // `, [district.rows[0].district_id]);
-    
-    const result = await pool.query(`SELECT 
-        g.*
-        FROM 
-        Grievances g
-        WHERE 
-        g.district_id = $1;
-`, [district.rows[0].district_id]);
-    const grievance = result.rows;
 
-    const grievances = await Promise.all(
-    grievance.map(async (grievance) => {
-    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
-    return {
-    ...grievance,
-    media: media ? {
-    document: media.document
-    } : null
-    };
-    })
+  try {
+    // Get district ID for the officer
+    const district = await pool.query(
+      'SELECT district_id FROM officer_info WHERE officer_id = $1',
+      [user_id]
     );
-        res.json(grievances);
-      } catch (err) {
-        res.status(500).json({ error: err.message });
-      }
-    };
+
+    const districtId = district.rows[0].district_id;
+
+    // Join grievances with blocks, schools, complainants → users
+    const result = await pool.query(`
+      SELECT 
+        g.*,
+        b.block_name,
+        s.school_name,
+        u.name
+      FROM 
+        grievances g
+      LEFT JOIN blocks b ON g.block_id = b.block_id
+      LEFT JOIN school s ON g.school_id = s.school_id
+      LEFT JOIN complainants c ON g.complainant_id = c.complainant_id
+      LEFT JOIN users u ON c.user_id = u.user_id
+      WHERE 
+        g.district_id = $1
+    `, [districtId]);
+
+    const grievanceRows = result.rows;
+
+    // Attach MongoDB media
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            document: media.document
+          } : null
+        };
+      })
+    );
+
+    res.json(grievances);
+  } catch (err) {
+    console.error("Error in getGrievancesByDistrict:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 
 export const getBlockOfficersWithGrievanceCount = async (req, res) => {
   const user_id  = req.user.user_id;
@@ -159,7 +176,7 @@ export const assignGrievance = async (req, res) => {
   }
 };
 
-//level 2 officer
+
 
 export const getAssignedGrievances = async (req, res) => {
   const user_id = req.user.user_id;
@@ -211,7 +228,10 @@ export const reviewATR = async (req, res) => {
   }
 };
 
+
+
 // Level 2 Officer Services
+
 
 export const getAssignedToMe = async (req, res) => {
   const user_id  = req.user.user_id;
@@ -226,6 +246,8 @@ export const getAssignedToMe = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 export const uploadATR = async (req, res) => {
   const { grievance_id, atr_text } = req.body;
