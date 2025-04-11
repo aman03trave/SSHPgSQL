@@ -109,8 +109,10 @@ export const getGrievancesByDistrict = async (req, res) => {
       LEFT JOIN school s ON g.school_id = s.school_id
       LEFT JOIN complainants c ON g.complainant_id = c.complainant_id
       LEFT JOIN users u ON c.user_id = u.user_id
+      LEFT JOIN grievance_assignment ga ON g.grievance_id = ga.grievance_id
       WHERE 
         g.district_id = $1
+        AND ga.grievance_id IS NULL
     `, [districtId]);
 
     const grievanceRows = result.rows;
@@ -122,6 +124,7 @@ export const getGrievancesByDistrict = async (req, res) => {
         return {
           ...grievance,
           media: media ? {
+            image: media.image,
             document: media.document
           } : null
         };
@@ -180,17 +183,27 @@ export const assignGrievance = async (req, res) => {
 
 export const getAssignedGrievances = async (req, res) => {
   const user_id = req.user.user_id;
+
   try {
     const result = await pool.query(`
-      SELECT g.* FROM grievances g
+      SELECT 
+        g.title, 
+        g.description,
+        u.name AS assigned_to_name,
+        ga.assigned_at
+      FROM grievances g
       JOIN grievance_assignment ga ON g.grievance_id = ga.grievance_id
+      JOIN Complainants c ON g.complainant_id = c.complainant_id
+      JOIN Users u ON ga.assigned_to = u.user_id
       WHERE ga.assigned_by = $1
     `, [user_id]);
+
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 export const reviewATR = async (req, res) => {
   const { atr_id, status, remarks } = req.body;
