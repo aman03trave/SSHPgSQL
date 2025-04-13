@@ -246,18 +246,51 @@ export const reviewATR = async (req, res) => {
 
 
 export const getAssignedToMe = async (req, res) => {
-  const user_id  = req.user.user_id;
+  const user_id = req.user.user_id;
   try {
     const result = await pool.query(`
-      SELECT g.* FROM grievances g
-      JOIN grievance_assignment ga ON g.grievance_id = ga.grievance_id
+      SELECT 
+        g.grievance_id,
+        g.title,
+        g.description,
+        u.name AS assigned_by,
+        ga.assigned_at
+      FROM grievance_assignment ga
+      JOIN grievances g ON g.grievance_id = ga.grievance_id
+      JOIN users u ON u.user_id = ga.assigned_by
+      LEFT JOIN (
+        SELECT DISTINCT ON (grievance_id) grievance_id, action_code_id
+        FROM action_log
+        ORDER BY grievance_id, action_timestamp DESC
+      ) latest_action ON latest_action.grievance_id = ga.grievance_id
       WHERE ga.assigned_to = $1
+        AND (latest_action.action_code_id IS NULL OR latest_action.action_code_id NOT IN (8, 9));
     `, [user_id]);
-    res.json(result.rows);
+    
+
+    const grievanceRows = result.rows;
+
+    // Attach MongoDB media
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            image: media.image,
+            document: media.document
+          } : null
+        };
+      })
+    );
+
+    res.json(grievances);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 
 
@@ -295,3 +328,48 @@ export const uploadATR = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getAcceptedGrievance = async (req, res) => {
+  const user_id = req.user.user_id;
+  try {
+    const result = await pool.query(`
+      SELECT 
+        g.grievance_id,
+        g.title,
+        g.description,
+        u.name AS assigned_by,
+        ga.assigned_at
+      FROM grievance_assignment ga
+      JOIN grievances g ON g.grievance_id = ga.grievance_id
+      JOIN users u ON u.user_id = ga.assigned_by
+      LEFT JOIN (
+        SELECT DISTINCT ON (grievance_id) grievance_id, action_code_id
+        FROM action_log
+        ORDER BY grievance_id, action_timestamp DESC
+      ) latest_action ON latest_action.grievance_id = ga.grievance_id
+      WHERE ga.assigned_to = $1
+        AND (latest_action.action_code_id IN (9));
+    `, [user_id]);
+    
+
+    const grievanceRows = result.rows;
+
+    // Attach MongoDB media
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            image: media.image,
+            document: media.document
+          } : null
+        };
+      })
+    );
+
+    res.json(grievances);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}

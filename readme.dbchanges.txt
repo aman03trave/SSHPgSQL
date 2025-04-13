@@ -614,3 +614,6 @@ INSERT into ACTION_CODE values(8, 'Grievance rejected by level 2');
 
 insert into roles values(4, 'Level 1'),
 (5, 'Level 2');
+
+date: 12th April '25
+INSERT INTO action_code VALUES(9, 'Grievance accepted by level 2');

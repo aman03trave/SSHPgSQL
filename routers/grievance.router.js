@@ -1,5 +1,5 @@
 import express from "express";
-import { addGrievance, getGrievance, checkReminderEligibility, addReminder, getReminderStatus } from "../controllers/grievance.controller.js";
+import { addGrievance, getGrievance, checkReminderEligibility, addReminder, getReminderStatus, addActionLog } from "../controllers/grievance.controller.js";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import {verifyToken} from '../middleware/verifytokenMiddleware.js'
 import upload from '../middleware/uploadPic.js';
@@ -14,5 +14,6 @@ router.get('/getgrievance', verifyToken, getGrievance);
 router.get('/checkReminder', verifyToken, checkReminderEligibility);
 router.post('/addReminder', verifyToken, addReminder);
 router.get('/getReminder', verifyToken, getReminderStatus);
+router.post('/addAction', verifyToken, addActionLog);
 
 export default router;

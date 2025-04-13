@@ -80,3 +80,15 @@ export const getReminderStatus = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const addActionLog = async (req, res) => {
+    const user_id = req.user.user_id;
+    const {grievance_id, action_code_id} = req.body;
+    try {
+        const result = await grievanceService.addAction(grievance_id, user_id, action_code_id);
+        res.status(200).json(result);
+    } catch (error) {
+        throw(error);
+        
+    }
+}
