@@ -3,6 +3,7 @@ import { addGrievance, getGrievance, checkReminderEligibility, addReminder, getR
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import {verifyToken} from '../middleware/verifytokenMiddleware.js'
 import upload from '../middleware/uploadPic.js';
+import { getGrievanceById } from '../controllers/grievance.controller.js';
 
 
 const router = express.Router();
@@ -14,5 +15,6 @@ router.get('/getgrievance', verifyToken, getGrievance);
 router.get('/checkReminder', verifyToken, checkReminderEligibility);
 router.post('/addReminder', verifyToken, addReminder);
 router.get('/getReminder', verifyToken, getReminderStatus);
+router.get('/grievance_id',verifyToken,getGrievanceById);
 
 export default router;

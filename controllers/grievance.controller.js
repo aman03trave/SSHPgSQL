@@ -1,4 +1,6 @@
 import Grievances from "../services/grievance.service.js";
+import pool from '../config/db.js';
+import Grievance_Media from "../model/grievance_media.model.js";
 
 const grievanceService = new Grievances();
 
@@ -80,3 +82,41 @@ export const getReminderStatus = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const getGrievanceById = async (req, res) => {
+    const { grievance_id } = req.query;
+    console.log("Grievance ID:", grievance_id);  
+  
+    try {
+      // Make sure to include grievance_id in the SELECT to use it later
+      const result = await pool.query(
+        `SELECT grievance_id, title, description, created_at
+         FROM grievances
+         WHERE grievance_id = $1`,
+        [grievance_id]
+      );
+  
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'Grievance not found' });
+      }
+  
+      const grievance = result.rows[0];
+  
+      // Fetch media from MongoDB (assuming grievance_id is stored as grievanceId)
+      const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+  
+      const response = {
+        ...grievance,
+        media: media ? {
+          image: media.image,
+          document: media.document
+        } : null
+      };
+  
+      res.status(200).json(response);
+    } catch (error) {
+      console.error("Error fetching grievance:", error);
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
