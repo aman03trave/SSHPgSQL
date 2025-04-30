@@ -1,5 +1,5 @@
 import express from "express";
-import { addGrievance, getGrievance, checkReminderEligibility, addReminder, getReminderStatus } from "../controllers/grievance.controller.js";
+import { addGrievance, getGrievance, checkReminderEligibility, addReminder, getReminderStatus, addActionLog } from "../controllers/grievance.controller.js";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import {verifyToken} from '../middleware/verifytokenMiddleware.js'
 import upload from '../middleware/uploadPic.js';

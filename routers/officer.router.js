@@ -1,6 +1,6 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { add_Officer, getGrievancesByDistrict, getBlockOfficersWithGrievanceCount, assignGrievance, getAssignedGrievances, reviewATR, getAssignedToMe, uploadATR } from "../controllers/officer.controller.js";
+import { add_Officer, getGrievancesByDistrict, getBlockOfficersWithGrievanceCount, assignGrievance, getAssignedGrievances, reviewATR, getAssignedToMe, getAcceptedGrievance, uploadATR } from "../controllers/officer.controller.js";
 import e from "cors";
 import { verifyToken } from "../middleware/verifytokenMiddleware.js";
 import upload from '../middleware/uploadPic.js';
@@ -15,6 +15,7 @@ expressRouter.post('/assignGrievance', verifyToken, assignGrievance);
 expressRouter.get('/getAssignedGrievance',verifyToken, getAssignedGrievances);
 expressRouter.post('/reviewATR',verifyToken, reviewATR);
 expressRouter.get('/getAssignedToMe',verifyToken, getAssignedToMe);
+expressRouter.get('/getAcceptedGrievance',verifyToken, getAcceptedGrievance);
 expressRouter.post('/uploadATR', verifyToken, upload.fields([{name: "document"}]), uploadATR);
 
 export default expressRouter;

@@ -29,7 +29,7 @@ class Users {
           const count = parseInt(id.rows[0].count, 10); // Extract count from result
           const user_id = `U-${1000 + count + 1}`;
           
-        const hashedPassword = await bcrypt.hash(password, 20);
+        const hashedPassword = await bcrypt.hash(password, 12);
         await pool
            .query('INSERT INTO Users (user_id, name, gender, age, email, password, role_id, phone_no) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [user_id, name, gender, age, email, hashedPassword, role_id, phone]);
 
