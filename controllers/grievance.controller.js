@@ -71,6 +71,18 @@ export const addReminder = async (req, res) => {
     }
 };
 
+export const addActionLog = async (req, res) => {
+    const user_id = req.user.user_id;
+    const {grievance_id, action_code_id} = req.body;
+    try {
+        const result = await grievanceService.addAction(grievance_id, user_id, action_code_id);
+        res.status(200).json(result);
+    } catch (error) {
+        throw(error);
+        
+    }
+}
+
 export const getReminderStatus = async (req, res) => {
     // const { grievance_id} = req.body;
     const user_id = req.user.user_id;

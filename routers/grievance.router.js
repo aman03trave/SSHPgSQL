@@ -15,6 +15,7 @@ router.get('/getgrievance', verifyToken, getGrievance);
 router.get('/checkReminder', verifyToken, checkReminderEligibility);
 router.post('/addReminder', verifyToken, addReminder);
 router.get('/getReminder', verifyToken, getReminderStatus);
+router.post('/addAction', verifyToken, addActionLog);
 router.get('/grievance_id',verifyToken,getGrievanceById);
 
 export default router;
