@@ -139,50 +139,16 @@ class Grievances{
         }
     }
 
-    async ReminderEligibility(user_id){
-        try {
-            const result = await pool.query(`SELECT 
-                                            g.grievance_id,
-                                            g.title,
-                                            g.description
-                                            FROM 
-                                                Grievances g
-                                            JOIN 
-                                                Complainants c ON g.complainant_id = c.complainant_id
-                                            LEFT JOIN 
-                                                Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
-                                            LEFT JOIN 
-                                                action_log a ON g.grievance_id = a.grievance_id
-                                            WHERE 
-                                                c.user_id = $1
-                                            GROUP BY 
-                                                g.grievance_id, g.title, g.description, c.user_id
-                                            HAVING 
-                                                (
-                                                    MAX(a.action_timestamp) IS NULL OR 
-                                                    AGE(NOW(), MAX(a.action_timestamp)) > INTERVAL '6 hours'
-                                                ) AND (
-                                                    MAX(r.reminder_timestamp) IS NULL OR 
-                                                    AGE(NOW(), MAX(r.reminder_timestamp)) > INTERVAL '6 hours'
-                                                );
 
 
-                                            `, [user_id]);
-            return result.rows;
-            
-        } catch (error) {
-            throw new Error(`Error getting reminder : '${user_id, error}'`)
-        }
-    }
-
-    async addReminder(grievance_id, user_id){
+    async addReminder(grievanceId, user_id){
         try {
             const remind = await pool.query(`SELECT COUNT(*) FROM Reminders`);
             const count = parseInt(remind.rows[0].count, 10); 
             const reminder_id = count + 1;
             
-            console.log(grievance_id, user_id);
-            const result = await pool.query(`INSERT INTO Reminders( reminder_id, grievance_id, user_id) VALUES($1, $2, $3)`, [reminder_id, grievance_id, user_id]);
+            console.log(grievanceId, user_id);
+            const result = await pool.query(`INSERT INTO Reminders( reminder_id, grievance_id, user_id) VALUES($1, $2, $3)`, [reminder_id, grievanceId, user_id]);
             return result.rows[0];
             
         } catch (error) {
