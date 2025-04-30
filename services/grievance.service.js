@@ -192,8 +192,8 @@ class Grievances{
 
     async getReminderStatus(user_id){
         try {
-            
-            const result = await pool.query(`SELECT 
+            const result = await pool.query(
+                `SELECT 
                                             g.title, g.description, g.grievance_id, 
                                             CASE 
                                                 WHEN (

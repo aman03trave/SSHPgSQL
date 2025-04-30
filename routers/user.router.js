@@ -13,7 +13,6 @@ expressRouter.post('/login', Login);
 
 expressRouter.post('/logout', Logout);
 
-
 expressRouter.post('/refresh', refreshAccessToken);
 
 expressRouter.get('/dashboard', verifyToken, async(req, res) => {
