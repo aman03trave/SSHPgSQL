@@ -224,22 +224,14 @@ class Grievances{
                                                 );
 
 
-                                            `, [user_id]);
-            return result.rows;
-            
-        } catch (error) {
-            throw new Error(`Error getting reminder : '${user_id, error}'`)
-        }
-    }
-
-    async addReminder(grievance_id, user_id){
+    async addReminder(grievanceId, user_id){
         try {
             const remind = await pool.query(`SELECT COUNT(*) FROM Reminders`);
             const count = parseInt(remind.rows[0].count, 10); 
             const reminder_id = count + 1;
             
-            console.log(grievance_id, user_id);
-            const result = await pool.query(`INSERT INTO Reminders( reminder_id, grievance_id, user_id) VALUES($1, $2, $3)`, [reminder_id, grievance_id, user_id]);
+            console.log(grievanceId, user_id);
+            const result = await pool.query(`INSERT INTO Reminders( reminder_id, grievance_id, user_id) VALUES($1, $2, $3)`, [reminder_id, grievanceId, user_id]);
             return result.rows[0];
             
         } catch (error) {
