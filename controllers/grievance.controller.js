@@ -49,6 +49,15 @@ export const getGrievance = async (req, res, next) => {
     }
 }
 
+export const grievanceStats = async (req, res) => {
+    try {
+      const stats = await grievanceService.grievanceStatsService();
+      res.status(200).json(stats);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+
 
 export const checkReminderEligibility = async (req, res) => {
     const user_id = req.user.user_id;

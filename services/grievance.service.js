@@ -91,6 +91,34 @@ class Grievances{
         }
     }
 
+    async grievanceStats() {
+        const query = `
+          SELECT status, COUNT(*) as count FROM (
+            SELECT a.grievance_id,
+              CASE 
+                WHEN a.action_code_id = 1 THEN 'Registered'
+                WHEN a.action_code_id = 7 THEN 'Completed'
+                ELSE 'InProcess'
+              END AS status
+            FROM Action_Log a
+            INNER JOIN (
+              SELECT grievance_id, MAX(action_timestamp) AS latest_time
+              FROM Action_Log
+              GROUP BY grievance_id
+            ) latest ON a.grievance_id = latest.grievance_id AND a.action_timestamp = latest.latest_time
+          ) latest_actions
+          GROUP BY status
+        `;
+    
+        const result = await pool.query(query);
+        const stats = { Registered: 0, InProcess: 0, Completed: 0 };
+        result.rows.forEach(row => {
+          stats[row.status] = parseInt(row.count);
+        });
+    
+        return stats;
+      }
+
     async addGrievanceMedia(grievanceId, imagePath, documentPath) {
         const grievanceMedia = new Grievance_Media({
             grievanceId,
@@ -138,6 +166,35 @@ class Grievances{
             throw new Error(`Error fetching grievance with media: ${e.message}`);
         }
     }
+
+    async grievanceStatsService(){
+  const query = `
+    SELECT status, COUNT(*) as count FROM (
+      SELECT a.grievance_id,
+        CASE 
+          WHEN a.action_code_id = 1 THEN 'Registered'
+          WHEN a.action_code_id = 7 THEN 'Completed'
+          ELSE 'InProcess'
+        END AS status
+      FROM Action_Log a
+      INNER JOIN (
+        SELECT grievance_id, MAX(action_timestamp) AS latest_time
+        FROM Action_Log
+        GROUP BY grievance_id
+      ) latest ON a.grievance_id = latest.grievance_id AND a.action_timestamp = latest.latest_time
+    ) latest_actions
+    GROUP BY status
+  `;
+
+  const result = await pool.query(query);
+
+  const stats = { Registered: 0, InProcess: 0, Completed: 0 };
+  result.rows.forEach(row => {
+    stats[row.status] = parseInt(row.count);
+  });
+
+  return stats;
+};
 
     async ReminderEligibility(user_id){
         try {
