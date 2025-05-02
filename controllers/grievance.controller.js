@@ -51,7 +51,7 @@ export const getGrievance = async (req, res, next) => {
 
 export const grievanceStats = async (req, res) => {
     try {
-      const stats = await grievanceService.grievanceStatsService();
+      const stats = await grievanceService.grievanceStats();
       res.status(200).json(stats);
     } catch (error) {
       res.status(500).json({ error: error.message });
