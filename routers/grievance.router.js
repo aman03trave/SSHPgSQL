@@ -3,8 +3,10 @@ import { addGrievance, getGrievance, addReminder, getReminderStatus, addActionLo
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import {verifyToken} from '../middleware/verifytokenMiddleware.js'
 import upload from '../middleware/uploadPic.js';
-import { getGrievanceById } from '../controllers/grievance.controller.js';
+// import { getGrievanceById } from '../controllers/grievance.controller.js';
 import { grievanceStats } from "../controllers/grievance.controller.js";
+import { getGrievanceById, countUserNotification } from '../controllers/grievance.controller.js';
+
 
 const router = express.Router();
 
@@ -18,5 +20,6 @@ router.get('/getReminder', verifyToken, getReminderStatus);
 router.post('/addAction', verifyToken, addActionLog);
 router.get('/grievance_id',verifyToken,getGrievanceById);
 router.get('/grievanceStats',grievanceStats);
+router.get('/countNotification', verifyToken, countUserNotification);
 
 export default router;

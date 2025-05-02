@@ -141,3 +141,24 @@ export const getGrievanceById = async (req, res) => {
     }
   };
   
+
+  export const countUserNotification = async (req, res) => {
+    try {
+        const user_id = req.user.user_id;
+        const reminders = await getReminderStatus(user_id);
+
+        const count = reminders.filter(item => {
+            return !(
+                item.notification_type === 'Reminder Eligibility' &&
+                item.can_send_reminder === false
+            );
+        }).length;
+        
+
+        return res.status(200).json({ count });
+    } catch (error) {
+        console.error("Error counting notifications:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
