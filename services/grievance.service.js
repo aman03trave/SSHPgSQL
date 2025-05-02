@@ -221,7 +221,13 @@ class Grievances{
                                                 ) AND (
                                                     MAX(r.reminder_timestamp) IS NULL OR 
                                                     AGE(NOW(), MAX(r.reminder_timestamp)) > INTERVAL '6 hours'
-                                                );
+                                                )`, [user_id]);
+            }
+            catch(error){ 
+                throw error;
+            }
+            }
+            
 
 
     async addReminder(grievanceId, user_id){
@@ -242,31 +248,127 @@ class Grievances{
     async getReminderStatus(user_id){
         try {
             const result = await pool.query(
-                `SELECT 
-                                            g.title, g.description, g.grievance_id, 
-                                            CASE 
-                                                WHEN (
-                                                    (MAX(a.action_timestamp) IS NULL OR NOW() - MAX(a.action_timestamp) > INTERVAL '2 hours') AND
-                                                    (MAX(r.reminder_timestamp) IS NULL OR NOW() - MAX(r.reminder_timestamp) > INTERVAL '2 hours')
-                                                ) 
-                                                THEN TRUE 
-                                                ELSE FALSE 
-                                            END AS can_send_reminder
-                                            FROM 
-                                                Grievances g
-                                            JOIN 
-                                                Complainants c ON g.complainant_id = c.complainant_id
-                                            LEFT JOIN 
-                                                Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
-                                            LEFT JOIN 
-                                                action_log a ON g.grievance_id = a.grievance_id
-                                            WHERE 
-                                                c.user_id = $1
-                                            GROUP BY 
-                                                g.grievance_id, c.user_id
-                                            HAVING
-                                                MAX(r.reminder_timestamp) IS NOT NULL
-                                                OR NOW() - MIN(g.created_at) > INTERVAL '2 hours';
+                `SELECT * FROM (
+    -- Reminder Eligibility Check
+    SELECT 
+        g.grievance_id,
+        g.title,
+        'Reminder Eligibility' AS notification_type,
+        NOW() AS timestamp,
+        (
+            NOW() - MIN(g.created_at) > INTERVAL '2 hours'
+            AND (MAX(a.action_timestamp) IS NULL OR NOW() - MAX(a.action_timestamp) > INTERVAL '2 hours')
+            AND (MAX(r.reminder_timestamp) IS NULL OR NOW() - MAX(r.reminder_timestamp) > INTERVAL '2 hours')
+        ) AS can_send_reminder
+    FROM 
+        Grievances g
+    JOIN 
+        Complainants c ON g.complainant_id = c.complainant_id
+    LEFT JOIN 
+        Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
+    LEFT JOIN 
+        action_log a ON g.grievance_id = a.grievance_id
+    WHERE 
+        c.user_id = $1
+    GROUP BY 
+        g.grievance_id, g.title, c.user_id
+
+    UNION ALL
+
+    -- Reminder Sent
+    SELECT 
+        r.grievance_id,
+        g.title,
+        'Reminder Sent' AS notification_type,
+        r.reminder_timestamp AS timestamp,
+        false AS can_send_reminder
+    FROM 
+        Reminders r
+    JOIN 
+        Grievances g ON g.grievance_id = r.grievance_id
+    JOIN 
+        Complainants c ON g.complainant_id = c.complainant_id
+    WHERE 
+        c.user_id = $1
+
+    UNION ALL
+
+    -- Action Log (e.g., assigned, verified)
+    SELECT 
+        a.grievance_id,
+        g.title,
+        ac.code AS notification_type,
+        a.action_timestamp AS timestamp,
+        false AS can_send_reminder
+    FROM 
+        Action_Log a
+    JOIN 
+        Action_Code ac ON ac.action_code_id = a.action_code_id
+    JOIN 
+        Grievances g ON g.grievance_id = a.grievance_id
+    JOIN 
+        Complainants c ON g.complainant_id = c.complainant_id
+    WHERE 
+        c.user_id = $1
+
+    UNION ALL
+
+    -- Grievance Assigned to Officer
+    SELECT 
+        ga.grievance_id,
+        g.title,
+        'Grievance Assigned to Officer' AS notification_type,
+        ga.assigned_at AS timestamp,
+        false AS can_send_reminder
+    FROM 
+        grievance_assignment ga
+    JOIN 
+        Grievances g ON g.grievance_id = ga.grievance_id
+    JOIN 
+        Complainants c ON g.complainant_id = c.complainant_id
+    WHERE 
+        c.user_id = $1
+
+    UNION ALL
+
+    -- ATR Generated
+    SELECT 
+        a.grievance_id,
+        g.title,
+        'ATR Generated' AS notification_type,
+        a.created_at AS timestamp,
+        false AS can_send_reminder
+    FROM 
+        atr_reports a
+    JOIN 
+        Grievances g ON g.grievance_id = a.grievance_id
+    JOIN 
+        Complainants c ON g.complainant_id = c.complainant_id
+    WHERE 
+        c.user_id = $1
+
+    UNION ALL
+
+    -- ATR Reviewed (Accepted/Rejected)
+    SELECT 
+        arw.atr_review_id::TEXT || '-' || g.grievance_id AS grievance_id,
+        g.title,
+        CONCAT('ATR ', arw.status) AS notification_type,
+        arw.reviewed_at AS timestamp,
+        false AS can_send_reminder
+    FROM 
+        atr_review arw
+    JOIN 
+        atr_reports atr ON arw.atr_id = atr.atr_id
+    JOIN 
+        grievances g ON atr.grievance_id = g.grievance_id
+    JOIN 
+        complainants c ON g.complainant_id = c.complainant_id
+    WHERE 
+        c.user_id = $1
+) AS notifications
+ORDER BY timestamp DESC;
+
 
             `, [user_id]);
             return result.rows;
