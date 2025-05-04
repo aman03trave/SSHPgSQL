@@ -298,7 +298,7 @@ export const uploadATR = async (req, res) => {
   const { grievance_id, atr_text } = req.body;
   const user_id  = req.user.user_id;
 
-  const documentPath = req.files["document"] ? req.files["document"][0].path : null;
+  const documentPath = req.files["atr"] ? req.files["atr"][0].path : null;
 
   try {
     const id = await pool.query('SELECT COUNT(*) FROM atr_reports');

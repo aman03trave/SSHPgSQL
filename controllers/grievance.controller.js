@@ -59,15 +59,15 @@ export const grievanceStats = async (req, res) => {
   };
 
 
-// export const checkReminderEligibility = async (req, res) => {
-//     const user_id = req.user.user_id;
-//     try {
-//         const result = await grievanceService.ReminderEligibility(user_id);
-//         res.status(200).json(result);
-//     } catch (error) {
-//         res.status(500).json({ error: error.message });
-//     }
-// };
+export const checkReminderEligibility = async (req, res) => {
+    const user_id = req.user.user_id;
+    try {
+        const result = await grievanceService.ReminderEligibility(user_id);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 export const addReminder = async (req, res) => {
     const { grievanceId } = req.body;

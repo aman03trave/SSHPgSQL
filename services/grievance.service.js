@@ -121,9 +121,14 @@ class Grievances {
             const result = await pool.query(`
                 SELECT g.*, a.*, ac.*
                 FROM Grievances g
-                LEFT JOIN action_log a ON g.grievance_id = a.grievance_id
+                LEFT JOIN (
+                    SELECT DISTINCT ON (grievance_id) *
+                    FROM action_log
+                    ORDER BY grievance_id, action_timestamp DESC
+                ) a ON g.grievance_id = a.grievance_id
                 LEFT JOIN action_code ac ON a.action_code_id = ac.action_code_id
-                WHERE g.complainant_id = $1
+                WHERE g.complainant_id = $1;
+
             `, [complainantId]);
 
             const grievances = result.rows;
@@ -149,42 +154,6 @@ class Grievances {
 
     async ReminderEligibility(user_id) {
         try {
-            const result = await pool.query(`SELECT 
-                                            g.grievance_id,
-                                            g.title,
-                                            g.description
-                                            FROM 
-                                                Grievances g
-                                            JOIN 
-                                                Complainants c ON g.complainant_id = c.complainant_id
-                                            LEFT JOIN 
-                                                Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
-                                            LEFT JOIN 
-                                                action_log a ON g.grievance_id = a.grievance_id
-                                            WHERE 
-                                                c.user_id = $1
-                                            GROUP BY 
-                                                g.grievance_id, g.title, g.description, c.user_id
-                                            HAVING 
-                                                (
-                                                    MAX(a.action_timestamp) IS NULL OR 
-                                                    AGE(NOW(), MAX(a.action_timestamp)) > INTERVAL '6 hours'
-                                                ) AND (
-                                                    MAX(r.reminder_timestamp) IS NULL OR 
-                                                    AGE(NOW(), MAX(r.reminder_timestamp)) > INTERVAL '6 hours'
-                                                )`, [user_id]);
-            return result.rows;
-        } catch (error) {
-            throw new Error(`Error checking reminder eligibility: '${error}'`);
-        }
-    }
-
-    async addReminder(grievanceId, user_id) {
-        try {
-            const remind = await pool.query(`SELECT COUNT(*) FROM Reminders`);
-            const count = parseInt(remind.rows[0].count, 10);
-            const reminder_id = count + 1;
-
             const result = await pool.query(
                 `SELECT * FROM (
     -- Reminder Eligibility Check
@@ -309,6 +278,21 @@ ORDER BY timestamp DESC;
 
 
             `, [user_id]);
+            return result.rows;
+        } catch (error) {
+            throw new Error(`Error checking reminder eligibility: '${error}'`);
+        }
+    }
+
+    async addReminder(grievanceId, user_id) {
+        try {
+            const remind = await pool.query(`SELECT COUNT(*) FROM Reminders`);
+            const count = parseInt(remind.rows[0].count, 10);
+            const reminder_id = count + 1;
+
+            const result = await pool.query(
+                `INSERT INTO Reminders(grievance_id, user_id) VALUES ($1, $2)
+            `, [grievanceId, user_id]);
             return result.rows;
             
         } catch (error) {

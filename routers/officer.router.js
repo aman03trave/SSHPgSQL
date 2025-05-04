@@ -16,6 +16,6 @@ expressRouter.get('/getAssignedGrievance',verifyToken, getAssignedGrievances);
 expressRouter.post('/reviewATR',verifyToken, reviewATR);
 expressRouter.get('/getAssignedToMe',verifyToken, getAssignedToMe);
 expressRouter.get('/getAcceptedGrievance',verifyToken, getAcceptedGrievance);
-expressRouter.post('/uploadATR', verifyToken, upload.fields([{name: "document"}]), uploadATR);
+expressRouter.post('/uploadATR', verifyToken, upload.fields([{name: "atr"}]), uploadATR);
 
 export default expressRouter;
