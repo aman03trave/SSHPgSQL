@@ -5,7 +5,7 @@ import {verifyToken} from '../middleware/verifytokenMiddleware.js'
 import upload from '../middleware/uploadPic.js';
 // import { getGrievanceById } from '../controllers/grievance.controller.js';
 import { grievanceStats } from "../controllers/grievance.controller.js";
-import { getGrievanceById, countUserNotification } from '../controllers/grievance.controller.js';
+import { getGrievanceById, countUserNotification, DisplayGrievancewithATR, DisplayLatestGrievance } from '../controllers/grievance.controller.js';
 
 
 const router = express.Router();
@@ -21,5 +21,7 @@ router.post('/addAction', verifyToken, addActionLog);
 router.get('/grievance_id',verifyToken,getGrievanceById);
 router.get('/grievanceStats',grievanceStats);
 router.get('/countNotification', verifyToken, countUserNotification);
+router.get('/displayATRWG', verifyToken, DisplayGrievancewithATR);
+router.get('/displayL_G', verifyToken, DisplayLatestGrievance);
 
 export default router;

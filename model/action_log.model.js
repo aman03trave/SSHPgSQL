@@ -10,8 +10,7 @@ pool
     grievance_id VARCHAR(30) REFERENCES Grievances(grievance_id) ON DELETE CASCADE,
     user_id VARCHAR(30) REFERENCES Users(user_id) ON DELETE SET NULL,
     action_code_id INT REFERENCES Action_Code(action_code_id) ON DELETE CASCADE,
-    action_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    reminder_sent BOOLEAN DEFAULT FALSE
+    action_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );`);
 })
 .then(() => {

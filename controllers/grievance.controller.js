@@ -145,15 +145,14 @@ export const getGrievanceById = async (req, res) => {
   export const countUserNotification = async (req, res) => {
     try {
         const user_id = req.user.user_id;
-        const reminders = await getReminderStatus(user_id);
+        const reminders = await grievanceService.ReminderEligibility(user_id); // call correct function
 
-        const count = reminders.filter(item => {
-            return !(
-                item.notification_type === 'Reminder Eligibility' &&
-                item.can_send_reminder === false
-            );
-        }).length;
-        
+        const count = reminders.reduce((total, item) => {
+            if (item.notification_type === 'Reminder Eligibility' && !item.can_send_reminder) {
+                return total;
+            }
+            return total + 1;
+        }, 0);
 
         return res.status(200).json({ count });
     } catch (error) {
@@ -162,3 +161,34 @@ export const getGrievanceById = async (req, res) => {
     }
 };
 
+
+
+export const DisplayGrievancewithATR = async(req, res) => {
+    try {
+        // const {grievance_id} = req.body;
+        const user_id = req.user.user_id;
+        console.log(user_id);
+
+        const result = await grievanceService.afterATRUpload(user_id);
+        console.log(result);
+        res.status(200).json(result);
+    } catch (error) {
+        throw (error);
+    }
+}
+
+//display latest grievance to the officers
+
+export const DisplayLatestGrievance = async(req, res) => {
+    try {
+        const user_id = req.user.user_id;
+
+        const result = await grievanceService.displayLatestGrievance(user_id);
+        console.log("Entered \n",result);
+
+        res.status(200).json(result);
+
+    } catch (error) {
+        throw (error);
+    }
+}

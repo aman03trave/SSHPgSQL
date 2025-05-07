@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import Grievance_Media from '../model/grievance_media.model.js';
+import ATR_Media from '../model/atr_media.model.js';
 
 class Grievances {
     // Add action
@@ -158,27 +159,34 @@ class Grievances {
                 `SELECT * FROM (
     -- Reminder Eligibility Check
     SELECT 
-        g.grievance_id,
-        g.title,
-        'Reminder Eligibility' AS notification_type,
-        NOW() AS timestamp,
-        (
-            NOW() - MIN(g.created_at) > INTERVAL '2 hours'
-            AND (MAX(a.action_timestamp) IS NULL OR NOW() - MAX(a.action_timestamp) > INTERVAL '2 hours')
-            AND (MAX(r.reminder_timestamp) IS NULL OR NOW() - MAX(r.reminder_timestamp) > INTERVAL '2 hours')
-        ) AS can_send_reminder
-    FROM 
-        Grievances g
-    JOIN 
-        Complainants c ON g.complainant_id = c.complainant_id
-    LEFT JOIN 
-        Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
-    LEFT JOIN 
-        action_log a ON g.grievance_id = a.grievance_id
-    WHERE 
-        c.user_id = $1
-    GROUP BY 
-        g.grievance_id, g.title, c.user_id
+    g.grievance_id,
+    g.title,
+    'Reminder Eligibility' AS notification_type,
+    GREATEST(
+        g.created_at + INTERVAL '2 hours',
+        COALESCE(MAX(a.action_timestamp), g.created_at) + INTERVAL '2 hours',
+        COALESCE(MAX(r.reminder_timestamp), g.created_at) + INTERVAL '2 hours'
+    ) AS timestamp,
+    (
+        NOW() >= GREATEST(
+            g.created_at + INTERVAL '2 hours',
+            COALESCE(MAX(a.action_timestamp), g.created_at) + INTERVAL '2 hours',
+            COALESCE(MAX(r.reminder_timestamp), g.created_at) + INTERVAL '2 hours'
+        )
+    ) AS can_send_reminder
+FROM 
+    Grievances g
+JOIN 
+    Complainants c ON g.complainant_id = c.complainant_id
+LEFT JOIN 
+    Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
+LEFT JOIN 
+    action_log a ON g.grievance_id = a.grievance_id
+WHERE 
+    c.user_id = $1
+GROUP BY 
+    g.grievance_id, g.title, g.created_at, c.user_id
+
 
     UNION ALL
 
@@ -325,6 +333,79 @@ ORDER BY timestamp DESC;
             throw new Error(`Error getting reminder status : '${error}'`);
         }
     }
+
+    async afterATRUpload(user_id){
+        try {
+            console.log("Entered in the function");
+    
+            // Step 1: Fetch grievance with ATR report details (PostgreSQL)
+            const results = await pool.query(`
+                SELECT 
+                    g.grievance_id,
+                    g.title,
+                    a.atr_id,
+                    a.created_at AS atr_created_at,
+                    a.generated_by,
+                    a.version
+                FROM 
+                    grievances g
+                JOIN 
+                    atr_reports a ON g.grievance_id = a.grievance_id
+                WHERE 
+                    a.generated_by = $1
+            `, [user_id]);
+    
+            // Step 2: Fetch ATR media from MongoDB (optional)
+            const result  = results.rows;
+            console.log(result.grievance_id);
+            const atrMedia = await ATR_Media.find({ atr_id: result.map(row => row.grievance_id)
+                 }); // Assuming atr_id matches grievance_id
+    
+            return {
+                grievance: result,
+                atr_media: atrMedia
+            };
+            
+    
+        } catch (error) {
+            console.error("Error in afterATRUpload:", error);
+            throw error;
+        }
+    }
+
+    //Displaying the latest grievance lodged
+
+    async displayLatestGrievance(user_id){
+        console.log("Entered into the function");
+        console.log(user_id);
+
+        try {
+            const query = await pool.query(`SELECT g.grievance_id,
+                g.title,
+                g.description,
+                g.created_at
+                
+                FROM GRIEVANCES g
+
+                JOIN 
+
+                OFFICER_INFO o ON o.district_id = g.district_id
+
+                WHERE o.officer_id = $1
+
+                ORDER BY 
+                g.created_at desc
+                LIMIT 5
+                 `, [user_id]);
+            console.log(query.rows);
+            return query.rows;
+        } catch (error) {
+            throw (error);
+        }
+        
+    }
+
 }
 
+    
 export default Grievances;

@@ -10,7 +10,6 @@ pool
                     atr_id SERIAL PRIMARY KEY,
                     grievance_id vARCHAR(30) REFERENCES grievances(grievance_id) ON DELETE CASCADE,
                     generated_by VARCHAR(30) REFERENCES users(user_id), -- Level 2 officer
-                    atr_text TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     version INTEGER DEFAULT 1
 );

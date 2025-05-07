@@ -8,9 +8,11 @@ import Grievances from '../services/grievance.service.js';
 import bcrypt from 'bcrypt';
 import Grievance_Media from '../model/grievance_media.model.js';
 import ATR_Media from '../model/atr_media.model.js';
+import Officer from '../services/officer.services.js';
 
 const user = new Users();
 const form = new Grievances();
+const officer = new Officer();
 
 // Level 1 Officer Services
 
@@ -296,35 +298,53 @@ export const getAssignedToMe = async (req, res) => {
 
 export const uploadATR = async (req, res) => {
   const { grievance_id, atr_text } = req.body;
-  const user_id  = req.user.user_id;
+  const user_id = req.user.user_id;
 
-  const documentPath = req.files["atr"] ? req.files["atr"][0].path : null;
+  if (!grievance_id) {
+    return res.status(400).json({ error: "Missing grievance_id" });
+  }
+
+  const documentFile = req.files?.["atr"]?.[0];
+  const documentPath = documentFile ? documentFile.path : null;
 
   try {
+    const versionRes = await pool.query(
+      "SELECT COUNT(*) FROM atr_reports WHERE grievance_id = $1",
+      [grievance_id]
+    );
+    const version = parseInt(versionRes.rows[0].count, 10) + 1;
+
     const id = await pool.query('SELECT COUNT(*) FROM atr_reports');
     const count = parseInt(id.rows[0].count, 10); // Extract count from result
     const atr_id = count + 1;
-    const version = (await pool.query('SELECT COUNT(*) FROM atr_reports WHERE grievance_id = $1', [grievance_id])).rows[0].count;
 
-    await pool.query(`
-      INSERT INTO atr_reports (atr_id, grievance_id, generated_by, atr_text, version)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [atr_id, grievance_id, user_id, atr_text, Number(version) + 1]);
+    await pool.query(
+      `
+      INSERT INTO atr_reports (atr_id, grievance_id, generated_by, version)
+      VALUES ($1, $2, $3, $4)
+      `,
+      [atr_id, grievance_id, user_id, version]
+    );
 
-    const grievanceMedia = new ATR_Media({
-      atr_id,
-      document: documentPath
-    });
+    if (documentPath) {
+      const grievanceMedia = new ATR_Media({
+        atr_id,
+        document: documentPath,
+      });
+      await grievanceMedia.save();
+    }
 
-    await grievanceMedia.save();
-
-    await pool.query(`
+    await pool.query(
+      `
       INSERT INTO action_log (grievance_id, user_id, action_code_id)
       VALUES ($1, $2, 3)
-    `, [grievance_id, user_id]);
+      `,
+      [grievance_id, user_id]
+    );
 
-    res.json({ message: 'ATR uploaded' });
+    res.status(200).json({ message: "ATR uploaded successfully", atr_id });
   } catch (err) {
+    console.error("Error uploading ATR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -373,3 +393,114 @@ export const getAcceptedGrievance = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 }
+
+export const checkForReminderLevel1 = async (req, res) => {
+  try {
+    console.log("Inside the Reminder Function");
+    const user_id = req.user.user_id;
+
+    const query = await pool.query(
+      `SELECT 
+          a.action_id,
+          a.grievance_id,
+          a.user_id AS officer_id,
+          ac.code AS action_code,
+          a.action_timestamp,
+          g.title,
+          g.description,
+          g.created_at,
+          u1.name as level1_officer,
+          u2.name as complainant
+        FROM Action_Log a
+        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
+        JOIN officer_info o ON o.officer_id = $
+        JOIN Grievances g ON g.grievance_id = a.grievance_id
+        JOIN Grievance_assignments g_a ON g_a.grievance_id = g.grievance_id
+        JOIN Users u1 ON u1.user_id = g_a.assigned_to
+        JOIN Complainants c on c.complainant_id = g.complainant_id
+        JOIN Users u2 ON u2.user_id = c.user_id
+        WHERE a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND o.block_id IS NULL
+        ORDER BY a.action_timestamp DESC`, [user_id]
+    );
+
+    res.status(200).json(query.rows);
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+export const checkForReminderLevel2 = async (req, res) => {
+  try {
+    console.log("Inside the Reminder Function");
+    const user_id = req.user.user_id;
+
+    const query = await pool.query(
+      `SELECT 
+          a.action_id,
+          a.grievance_id,
+          a.user_id AS officer_id,
+          ac.code AS action_code,
+          a.action_timestamp,
+          g.title,
+          g.description,
+          g.created_at,
+          u1.name as level1officer,
+          u2.name as complainant
+        FROM Action_Log a
+        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
+        JOIN officer_info o ON o.officer_id = $1
+        JOIN Grievances g ON g.grievance_id = a.grievance_id
+        JOIN Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+        JOIN Users u1 ON u1.user_id = g_a.assigned_by
+        JOIN Complainants c on c.complainant_id = g.complainant_id
+        JOIN Users u2 ON u2.user_id = c.user_id
+        WHERE a.action_code_id IN (2,3,4,5,6,7,8,9)
+        ORDER BY a.action_timestamp DESC`, [user_id]
+    );
+
+    res.status(200).json(query.rows);
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const L1_countUserNotification = async (req, res) => {
+    try {
+        const user_id = req.user.user_id;
+        const reminders = await officer.checkForReminderLevel1(user_id); // call correct function
+
+        // const count = reminders.reduce((total, item) => {
+        //     // if (item.notification_type === 'Reminder Eligibility' && !item.can_send_reminder) {
+        //     //     return total;
+        //     // }
+        //     return total + 1;
+        // }, 0);
+        const count = reminders.length;
+
+        return res.status(200).json({ count });
+    } catch (error) {
+        console.error("Error counting notifications:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+export const L2_countUserNotification = async (req, res) => {
+  try {
+      const user_id = req.user.user_id;
+      console.log(user_id);
+      const reminders = await officer.checkForReminderLevel2(user_id); // call correct function
+
+      // const count = reminders.reduce((total, item) => {
+      //     // if (item.notification_type === 'Reminder Eligibility' && !item.can_send_reminder) {
+      //     //     return total;
+      //     // }
+      //     return total + 1;
+      // }, 0);
+
+
+      return res.status(200).json({ reminders });
+  } catch (error) {
+      console.error("Error counting notifications:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
