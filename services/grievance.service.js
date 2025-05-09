@@ -406,6 +406,43 @@ ORDER BY timestamp DESC;
         
     }
 
+    async getPublicGrievance(complainantId) {
+        try {
+            console.log(complainantId);
+            const result = await pool.query(`
+                SELECT g.*, a.*, ac.*
+                FROM Grievances g
+                LEFT JOIN (
+                    SELECT DISTINCT ON (grievance_id) *
+                    FROM action_log
+                    ORDER BY grievance_id, action_timestamp DESC
+                ) a ON g.grievance_id = a.grievance_id
+                LEFT JOIN action_code ac ON a.action_code_id = ac.action_code_id
+                WHERE g.is_public = 'true' and g.complainant_id != $1
+
+            `, [complainantId]);
+
+            const grievances = result.rows;
+
+            const grievancesWithMedia = await Promise.all(
+                grievances.map(async (grievance) => {
+                    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+                    return {
+                        ...grievance,
+                        media: media ? {
+                            image: media.image,
+                            document: media.document
+                        } : null
+                    };
+                })
+            );
+
+            return grievancesWithMedia;
+        } catch (e) {
+            throw new Error(`Error fetching grievance with media: ${e.message}`);
+        }
+    }
+
 }
 
     
