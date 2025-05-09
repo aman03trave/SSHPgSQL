@@ -193,3 +193,18 @@ export const DisplayLatestGrievance = async(req, res) => {
         throw (error);
     }
 }
+
+
+//display all the public grievances
+
+export const get_Public_Grievance = async(req, res) => {
+    try{
+        const user_id = req.user.user_id;
+        const complainantId = await grievanceService.getComplainant(user_id);androi
+        const result = await grievanceService.getPublicGrievance(complainantId);
+
+        res.status(200).json(result);
+    }catch (err){
+        throw (err);
+    }
+}
