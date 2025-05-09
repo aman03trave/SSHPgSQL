@@ -443,6 +443,34 @@ ORDER BY timestamp DESC;
         }
     }
 
+    //display all the action_log of a particular grievance_id
+
+    async display_action_log(grievance_id){
+        try {
+            console.log("Inside the function.");
+
+            const query = await pool.query(`SELECT 
+                                    a_c.code,
+                                    a.grievance_id,
+                                    a.action_timestamp,
+                                    users.name AS officer_name
+                                FROM 
+                                    action_log a
+                                JOIN action_code a_c on a_c.action_code_id = a.action_code_id
+                                JOIN 
+                                    users ON a.user_id = users.user_id
+                                WHERE 
+                                    a.grievance_id = $1
+                                ORDER BY 
+                                    a.action_timestamp DESC;
+                                `, [grievance_id])
+
+            return query.rows;
+        } catch (error) {
+            throw (error);
+        }
+    }
+
 }
 
     

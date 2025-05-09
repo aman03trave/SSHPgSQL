@@ -200,11 +200,25 @@ export const DisplayLatestGrievance = async(req, res) => {
 export const get_Public_Grievance = async(req, res) => {
     try{
         const user_id = req.user.user_id;
-        const complainantId = await grievanceService.getComplainant(user_id);androi
+        const complainantId = await grievanceService.getComplainant(user_id);
         const result = await grievanceService.getPublicGrievance(complainantId);
 
         res.status(200).json(result);
     }catch (err){
         throw (err);
+    }
+}
+
+//display all the action_log of a particular grievance_id
+
+export const Display_Action_Log = async(req, res, next) => {
+    try {
+        const { grievance_id} = req.body;
+
+        const result = await grievanceService.display_action_log(grievance_id);
+
+        res.status(200).json(result);
+    } catch (error) {
+        throw (error);
     }
 }
