@@ -6,37 +6,38 @@ const grievanceService = new Grievances();
 
 export const addGrievance = async (req, res, next) => {
     try {
+        console.log("FILES RECEIVED:", Object.keys(req.files));
+
         const { grievance_category, title, description, block_id, school_id, district_name } = req.body;
-        console.log(block_id, school_id, district_name);
         const user_id = req.user.user_id;
 
-        // Fetch necessary IDs
+        // Fetch IDs
         const complainant_id = await grievanceService.getComplainant(user_id);
-        // const block_id = await grievanceService.getBlock(block_name);
-        // const school_id = await grievanceService.getSchool(school_name);
         const district_id = await grievanceService.getDistrict(district_name);
         const grievance_category_id = await grievanceService.getgrievancecategory(grievance_category);
 
-        // File Paths
-        const imagePath = req.files["image"] ? req.files["image"][0].path : null;
-        const documentPath = req.files["document"] ? req.files["document"][0].path : null;
-
-        // Save grievance in MongoDB
-        console.log(block_id);
+        // Create Grievance
         const grievance = await grievanceService.addGrievance(
             user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id
         );
-        console.log(grievance);
-        // Save image & document in MongoDB
-        if (imagePath || documentPath) {
-            await grievanceService.addGrievanceMedia(grievance, imagePath, documentPath);
-        }
 
+        // Handle Multiple Files
+        const imagePaths = req.files["image"]?.map(file => file.path) || [];
+        const documentPaths = req.files["document"]?.map(file => file.path) || [];
+
+        for (const imagePath of imagePaths) {
+            await grievanceService.addGrievanceMedia(grievance, imagePath, null);
+        }
+        for (const documentPath of documentPaths) {
+            await grievanceService.addGrievanceMedia(grievance, null, documentPath);
+        }
+        console.log("////",grievance);
         res.json({ status: true, message: "Grievance added successfully", grievance });
     } catch (error) {
         next(error);
     }
 };
+
 
 export const getGrievance = async (req, res, next) => {
     try {

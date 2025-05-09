@@ -30,6 +30,7 @@ class Grievances {
             );
 
             await this.addAction(grievance_id, user_id, 1);
+            console.log(result.rows[0].grievance_id);
             return result.rows[0].grievance_id;
         } catch (error) {
             throw new Error(`Error lodging grievance : '${error}'`);

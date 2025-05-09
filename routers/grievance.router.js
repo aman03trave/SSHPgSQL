@@ -11,8 +11,15 @@ import { getGrievanceById, countUserNotification, DisplayGrievancewithATR, Displ
 const router = express.Router();
 
 
-router.post("/addgrievance", verifyToken, upload.fields([{ name: "image" }, { name: "document" }]), addGrievance);
-router.get('/getgrievance', verifyToken, getGrievance);
+router.post(
+    "/addgrievance",
+    verifyToken,
+    upload.fields([
+      { name: "image", maxCount: 10 },
+      { name: "document", maxCount: 10 }
+    ]),
+    addGrievance
+  ),router.get('/getgrievance', verifyToken, getGrievance);
 //for user
 router.get('/checkReminder', verifyToken, checkReminderEligibility);
 router.post('/addReminder', verifyToken, addReminder);
