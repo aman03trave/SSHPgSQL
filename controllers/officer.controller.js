@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import Grievance_Media from '../model/grievance_media.model.js';
 import ATR_Media from '../model/atr_media.model.js';
 import Officer from '../services/officer.services.js';
+import { response } from 'express';
 
 const user = new Users();
 const form = new Grievances();
@@ -17,7 +18,7 @@ const officer = new Officer();
 // Level 1 Officer Services
 
 
-
+//add officer as a new user---------
 export const add_Officer = async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -86,6 +87,7 @@ export const add_Officer = async (req, res, next) => {
 };
 
 
+//get grievance based on the districts for level 1 officer
 export const getGrievancesByDistrict = async (req, res) => {
   const user_id = req.user.user_id;
 
@@ -140,8 +142,22 @@ export const getGrievancesByDistrict = async (req, res) => {
   }
 };
 
+//get the new grievances count for level 1
+
+export const get_New_Grievance_Count = async (req, res, next) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const result = officer.getNewGrievanceCount(user_id);
+
+    res.status(200).json({count:result});
+  } catch (error) {
+    throw (error);
+  }
+}
 
 
+//get the list of block officers with the grievances count which they are currently handling
 export const getBlockOfficersWithGrievanceCount = async (req, res) => {
   const user_id  = req.user.user_id;
   try {
@@ -160,6 +176,8 @@ export const getBlockOfficersWithGrievanceCount = async (req, res) => {
   }
 };
 
+
+//assign grievances to the level2 officer
 export const assignGrievance = async (req, res) => {
   const { grievance_id, assigned_to } = req.body;
   const user_id = req.user.user_id;
@@ -183,6 +201,8 @@ export const assignGrievance = async (req, res) => {
 
 
 
+
+//get the grievances that are already been assigned to level 2 officers
 export const getAssignedGrievances = async (req, res) => {
   const user_id = req.user.user_id;
 
@@ -206,7 +226,22 @@ export const getAssignedGrievances = async (req, res) => {
   }
 };
 
+//display the count of grievances that are assigned.
 
+export const getAssignedGrievanceCount = async (req,res,next) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const result = await officer.assignedGrievanceCount(user_id);
+    res.status(200).json({count:result});
+
+  } catch (error) {
+    throw (error);
+  }
+}
+
+
+//get the ATR uploaded by the level 2 officer
 export const reviewATR = async (req, res) => {
   const { atr_id, status, remarks } = req.body;
   const user_id  = req.user.user_id;
@@ -240,6 +275,100 @@ export const reviewATR = async (req, res) => {
   } catch (err) {
     await pool.query('ROLLBACK');
     res.status(500).json({ error: err.message });
+  }
+};
+
+
+//get the disposed grievances list 
+export const Get_Disposed = async(req, res, next) => {
+  try {
+    console.log("Inside get disposed function.");
+
+    const user_id = req.user.user_id;
+
+    const query = await pool.query(`
+                                  SELECT g.grievance_id,
+                                  g.title,
+                                  g.description,
+                                  a_l.action_timestamp
+                                  
+                                  FROM officer_info o
+                                  JOIN grievances g ON o.district_id = g.district_id
+                                  JOIN action_log a_l ON o.officer_id = a_l.user_id
+                                  WHERE a_l.action_code_id = 7 AND o.officer_id = $1`, [user_id]);
+    res.status(200).json(query.rows);
+  } catch (error) {
+    throw (error);
+  }
+}
+
+//get the count of the disposed grievances
+export const get_disposed_count = async (req,res, next) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const result = officer.get_disposed(user_id);
+
+    res.status(200).json({count:result});
+  } catch (error) {
+    throw (error);
+  }
+}
+
+//fetch all the  notification count for level1 officer
+export const L1_countUserNotification = async (req, res) => {
+    try {
+        const user_id = req.user.user_id;
+        const reminders = await officer.CheckForReminderLevel1(user_id); // call correct function
+
+        // const count = reminders.reduce((total, item) => {
+        //     // if (item.notification_type === 'Reminder Eligibility' && !item.can_send_reminder) {
+        //     //     return total;
+        //     // }
+        //     return total + 1;
+        // }, 0);
+        
+
+        return res.status(200).json({ count:reminders });
+    } catch (error) {
+        console.error("Error counting notifications:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+//fetch all the notications for level1 officer
+export const checkForReminderLevel1 = async (req, res) => {
+  try {
+    console.log("Inside the Reminder Function");
+    const user_id = req.user.user_id;
+
+    const query = await pool.query(
+      `SELECT 
+          a.action_id,
+          a.grievance_id,
+          a.user_id AS officer_id,
+          ac.code AS action_code,
+          a.action_timestamp,
+          g.title,
+          g.description,
+          g.created_at,
+          u1.name as level1_officer,
+          u2.name as complainant
+        FROM Action_Log a
+        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
+        JOIN officer_info o ON o.officer_id = $1
+        JOIN Grievances g ON g.grievance_id = a.grievance_id
+        JOIN Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+        JOIN Users u1 ON u1.user_id = g_a.assigned_to
+        JOIN Complainants c on c.complainant_id = g.complainant_id
+        JOIN Users u2 ON u2.user_id = c.user_id
+        WHERE a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND o.block_id IS NULL
+        ORDER BY a.action_timestamp DESC`, [user_id]
+    );
+
+    res.status(200).json(query.rows);
+  } catch (error) {
+    throw error;
   }
 };
 
@@ -297,7 +426,7 @@ export const getAssignedToMe = async (req, res) => {
 
 
 export const uploadATR = async (req, res) => {
-  const { grievance_id, atr_text } = req.body;
+  const { grievance_id } = req.body;
   const user_id = req.user.user_id;
 
   if (!grievance_id) {
@@ -394,41 +523,6 @@ export const getAcceptedGrievance = async (req, res) => {
   }
 }
 
-export const checkForReminderLevel1 = async (req, res) => {
-  try {
-    console.log("Inside the Reminder Function");
-    const user_id = req.user.user_id;
-
-    const query = await pool.query(
-      `SELECT 
-          a.action_id,
-          a.grievance_id,
-          a.user_id AS officer_id,
-          ac.code AS action_code,
-          a.action_timestamp,
-          g.title,
-          g.description,
-          g.created_at,
-          u1.name as level1_officer,
-          u2.name as complainant
-        FROM Action_Log a
-        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
-        JOIN officer_info o ON o.officer_id = $
-        JOIN Grievances g ON g.grievance_id = a.grievance_id
-        JOIN Grievance_assignments g_a ON g_a.grievance_id = g.grievance_id
-        JOIN Users u1 ON u1.user_id = g_a.assigned_to
-        JOIN Complainants c on c.complainant_id = g.complainant_id
-        JOIN Users u2 ON u2.user_id = c.user_id
-        WHERE a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND o.block_id IS NULL
-        ORDER BY a.action_timestamp DESC`, [user_id]
-    );
-
-    res.status(200).json(query.rows);
-  } catch (error) {
-    throw error;
-  }
-};
-
 
 export const checkForReminderLevel2 = async (req, res) => {
   try {
@@ -465,25 +559,7 @@ export const checkForReminderLevel2 = async (req, res) => {
   }
 };
 
-export const L1_countUserNotification = async (req, res) => {
-    try {
-        const user_id = req.user.user_id;
-        const reminders = await officer.checkForReminderLevel1(user_id); // call correct function
 
-        // const count = reminders.reduce((total, item) => {
-        //     // if (item.notification_type === 'Reminder Eligibility' && !item.can_send_reminder) {
-        //     //     return total;
-        //     // }
-        //     return total + 1;
-        // }, 0);
-        const count = reminders.length;
-
-        return res.status(200).json({ count });
-    } catch (error) {
-        console.error("Error counting notifications:", error);
-        return res.status(500).json({ error: "Internal Server Error" });
-    }
-};
 export const L2_countUserNotification = async (req, res) => {
   try {
       const user_id = req.user.user_id;
@@ -504,3 +580,21 @@ export const L2_countUserNotification = async (req, res) => {
       return res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+export const Return_Grievance = async (req, res, next) => {
+  
+  try {
+    const {grievance_id} = req.body;
+    const user_id = req.user.user_id;
+
+    const result = await pool.query(`
+                                    DELETE FROM grievance_assignments where grievance_id = $1 and assigned_to = $2`, [grievance_id, user_id]);
+    
+    const add_log = await pool.query('INSERT INTO action_log(grievance_id, user_id, action_code_id) values($1, $2, 8)', [grievance_id, user_id] );
+
+    res.status(200).message("Grievance returned successfully.");
+  } catch (error) {
+    throw(error);
+  }
+}
+

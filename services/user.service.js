@@ -2,6 +2,7 @@ import db from '../config/db.js';
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import errorHandler from '../middleware/errorMiddleware.js';
+import UserProfile from "../model/profile_pic.model.js";
 const pool = db;
 
 
@@ -88,11 +89,19 @@ class Users {
       }
     
     }
+   
 
     async getUserProfile(userId){
       try {
         const result = await pool.query('SELECT name, age, phone_no, gender, email FROM Users WHERE user_id = $1', [userId]);
-        return result.rows[0];
+
+        const Profile = result.rows;
+
+        const profile_picture = await UserProfile.findOne({ user_id: userId }).select('profile_pic -_id');
+
+        console.log(profile_picture);    
+
+            return {profile_picture, Profile};
       } catch (error) {
         throw new Error(`Error getting user : '${userId, error}'`)
       }

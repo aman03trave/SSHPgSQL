@@ -17,15 +17,15 @@ class Grievances {
     }
 
     // Add grievance
-    async addGrievance(user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id) {
+    async addGrievance(user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id, is_public) {
         try {
             const re = await pool.query('SELECT COUNT(*) FROM grievances');
             const count = parseInt(re.rows[0].count, 10);
             const grievance_id = `G-${1000 + count + 1}`;
 
             const result = await pool.query(
-                `INSERT INTO Grievances(grievance_id, complainant_id, grievance_category_id, title, description, district_id, block_id, school_id) 
-                 VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING grievance_id`,
+                `INSERT INTO Grievances(grievance_id, complainant_id, grievance_category_id, title, description, is_public, district_id, block_id, school_id) 
+                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING grievance_id`,
                 [grievance_id, complainant_id, grievance_category_id, title, description, district_id, block_id, school_id]
             );
 
