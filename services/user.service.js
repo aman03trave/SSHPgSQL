@@ -22,23 +22,31 @@ class Users {
     }
     
   }
-    async createUser(name, gender, age, phone, email, password, role_id, category_id) {
-        
-        try{
-          const id = await pool.query('SELECT COUNT(*) FROM users');
-          const count = parseInt(id.rows[0].count, 10); // Extract count from result
-          const user_id = `U-${1000 + count + 1}`;
-          
-        const hashedPassword = await bcrypt.hash(password, 12);
-        await pool
-           .query('INSERT INTO Users (user_id, name, gender, age, email, password, role_id, phone_no) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [user_id, name, gender, age, email, hashedPassword, role_id, phone]);
+   async createUser(name, gender, age, phone, email, password, role_id, category_id, identity_proof_id = null, identity_proof_number = null) {
+  try {
+    const id = await pool.query('SELECT COUNT(*) FROM users');
+    const count = parseInt(id.rows[0].count, 10);
+    const user_id = `U-${1000 + count + 1}`;
 
-        await this.CreateComplainant(category_id, user_id);
-        }catch(e) {
-          throw new Error(`Error creating user: ${e.message}`);
-          // next(e);
-        }
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await pool.query(
+      'INSERT INTO Users (user_id, name, gender, age, email, password, role_id, phone_no) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      [user_id, name, gender, age, email, hashedPassword, role_id, phone]
+    );
+
+    await this.CreateComplainant(category_id, user_id);
+
+    if (identity_proof_id && identity_proof_number) {
+      await pool.query(
+        'INSERT INTO Users_Identity (user_id, identity_proof_id, identity_proof_number) VALUES ($1, $2, $3)',
+        [user_id, identity_proof_id, identity_proof_number]
+      );
     }
+  } catch (e) {
+    throw new Error(`Error creating user: ${e.message}`);
+  }
+}
+
 
     async getRole_id(role_name) {
       console.log('Getting role', role_name)

@@ -5,6 +5,8 @@ import { verifyToken } from '../middleware/verifytokenMiddleware.js';
 import pool from '../config/db.js';
 import { updateUserProfile, handleGetUserProfile} from "../controllers/user.controller.js";
 
+
+
 const expressRouter = express.Router();
 
 expressRouter.post('/register', RegisterUser);

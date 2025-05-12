@@ -3,22 +3,32 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { setTokenCookie } from '../utils/cookieHelper.js';
-
+import db from '../config/db.js';
+const pool = db;
 
 
 const user = new Users();
 
-export const RegisterUser = async ( req, res, next ) => {
-    try {
-        const { name, gender, age, phone, email, password, role_name, category } = req.body;
-        const role_id = await user.getRole_id(role_name);
-        const category_id = await user.findCategory(category);
-        await user.createUser(name, gender, age, phone, email, password, role_id, category_id);
-        res.json({ status: true, message: 'User registered successfully' });
-    } catch (err) {
-        next(err);
-    }
+export const RegisterUser = async (req, res, next) => {
+  try {
+    const {
+      name, gender, age, phone, email, password, role_name, category,
+      identity_proof_id, identity_proof_number
+    } = req.body;
+
+    const role_id = await user.getRole_id(role_name);
+    const category_id = await user.findCategory(category);
+    await user.createUser(
+      name, gender, age, phone, email, password, role_id, category_id,
+      identity_proof_id, identity_proof_number
+    );
+
+    res.json({ status: true,name,message: 'User registered successfully' });
+  } catch (err) {
+    next(err);
+  }
 };
+
 
 export const getRole_id = async (req, res, next) => {
     try{
@@ -31,6 +41,8 @@ export const getRole_id = async (req, res, next) => {
     }
 
 };
+
+
 
 dotenv.config();
 
