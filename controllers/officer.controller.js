@@ -278,6 +278,57 @@ export const reviewATR = async (req, res) => {
   }
 };
 
+//get atr_uploads
+
+export const Display_ATR_L1 = async (req, res, next) => {
+  try {
+    console.log("Inside the display_atr function");
+    const user_id = req.user.user_id;
+    const result = await pool.query(`
+                                    SELECT g.title,
+                                    g.description,
+                                    u.name
+                                    FROM grievances g
+                                    JOIN atr_report a_r ON a_r.grievance_id = g.grievance_id
+                                    JOIN grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+                                    JOIN Users u ON u.user_id = g_a.assigned_to
+                                    where g_a.assigned_by = $1`, [user_id]);
+    const grievanceRows = result.rows;
+
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await ATR_Media.findOne({ atr_id: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            document: media.document
+          } : null
+        };
+      })
+    );
+
+    res.json(grievances);
+
+
+  } catch (error) {
+    throw (error);
+  }
+}
+
+// get the atr display count
+export const Display_ATR_L1_count = async (req, res, next) => {
+  try {
+    console.log("Inside the display_atr_count function");
+    const user_id = req.user.user_id;
+    const result = await officer.Display_ATR_L1(user_id);
+
+    res.json({count : result});
+
+
+  } catch (error) {
+    throw (error);
+  }
+}
 
 //get the disposed grievances list 
 export const Get_Disposed = async(req, res, next) => {
@@ -296,7 +347,24 @@ export const Get_Disposed = async(req, res, next) => {
                                   JOIN grievances g ON o.district_id = g.district_id
                                   JOIN action_log a_l ON o.officer_id = a_l.user_id
                                   WHERE a_l.action_code_id = 7 AND o.officer_id = $1`, [user_id]);
-    res.status(200).json(query.rows);
+
+    
+    const grievanceRows = query.rows;
+
+    // Attach MongoDB media
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            image: media.image,
+            document: media.document
+          } : null
+        };
+      })
+    );
+    res.status(200).json(grievances);
   } catch (error) {
     throw (error);
   }
@@ -372,6 +440,53 @@ export const checkForReminderLevel1 = async (req, res) => {
   }
 };
 
+//Get all the returned grievance
+export const Get_Returned_Grievance = async (req, res, next) => {
+  try {
+    console.log("Inside the get returned function");
+
+    const result = await pool.query(`
+                                    SELECT g.*,
+                                    a_l.action_timestamp
+                                    From grievances g
+                                    JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
+                                    JOIN officer_info o ON o.district_id = g.district_id
+                                    where a_l.action_code_id = 8 and o.officer_id = $1`, [user_id]);
+
+    const grievanceRows = result.rows;
+
+    // Attach MongoDB media
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            image: media.image,
+            document: media.document
+          } : null
+        };
+      })
+    );
+    res.json(grievances);
+  } catch (error) {
+    throw (error);
+  }
+}
+
+//get count
+export const Get_Returned_Grievance_Count = async (req, res, next) => {
+  const user_id = req.user.user_id;
+  try {
+    console.log("Inside the get returned grievance count function.");
+    const result = await officer.display_returned_grievance(user_id);
+
+    res.status(200).json({count : result});
+  } catch (error) {
+    throw (error);
+  }
+}
+
 
 // Level 2 Officer Services
 
@@ -398,8 +513,7 @@ export const getAssignedToMe = async (req, res) => {
         AND (latest_action.action_code_id IS NULL OR latest_action.action_code_id NOT IN (8, 9));
     `, [user_id]);
     
-
-    const grievanceRows = result.rows;
+      const grievanceRows = result.rows;
 
     // Attach MongoDB media
     const grievances = await Promise.all(
@@ -414,6 +528,7 @@ export const getAssignedToMe = async (req, res) => {
         };
       })
     );
+  
 
     res.json(grievances);
   } catch (err) {
@@ -595,6 +710,44 @@ export const Return_Grievance = async (req, res, next) => {
     res.status(200).message("Grievance returned successfully.");
   } catch (error) {
     throw(error);
+  }
+}
+
+
+//show atr uploaded by level 2 officer
+
+export const Display_ATR_L2 = async (req, res, next) => {
+  try {
+    console.log("Inside the display_atr function");
+
+    const result = await pool.query(`
+                                    SELECT g.title,
+                                    g.description,
+                                    u.name
+                                    FROM grievances g
+                                    JOIN atr_reports a_r ON a_r.grievance_id = g.grievance_id
+                                    JOIN grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+                                    JOIN Users u ON u.user_id = g_a.assigned_by
+                                    where g_a.assigned_to = $1`, [user_id]);
+    const grievanceRows = result.rows;
+
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await ATR_Media.findOne({ atr_id: grievance.grievance_id });
+        return {
+          ...grievance,
+          media: media ? {
+            document: media.document
+          } : null
+        };
+      })
+    );
+
+    res.json(grievances);
+
+
+  } catch (error) {
+    throw (error);
   }
 }
 

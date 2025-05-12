@@ -149,6 +149,44 @@ class Officer{
   }
     }
 
+  async display_returned_grievance(user_id) {
+    try {
+    console.log("Inside the get returned function");
+
+    const result = await pool.query(`
+                                    SELECT g.*,
+                                    a_l.action_timestamp
+                                    From grievances g
+                                    JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
+                                    JOIN officer_info o ON o.district_id = g.district_id
+                                    where a_l.action_code_id = 8 and o.officer_id = $1`, [user_id]);
+
+    return result.rowCount;
+    } catch (err){
+      throw (err);
+    }
+  }
+
+  async Display_ATR_L1 (user_id){
+  try {
+    console.log("Inside the display_atr function");
+   
+    const result = await pool.query(`
+                                    SELECT g.title,
+                                    g.description,
+                                    u.name
+                                    FROM grievances g
+                                    JOIN atr_reports a_r ON a_r.grievance_id = g.grievance_id
+                                    JOIN grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+                                    JOIN Users u ON u.user_id = g_a.assigned_to
+                                    where g_a.assigned_by = $1`, [user_id]);
+    
+      return result.rowCount;
+
+  } catch (error) {
+    throw (error);
+  }
+}
 
 };
 
