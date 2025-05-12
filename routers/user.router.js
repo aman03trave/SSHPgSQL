@@ -1,8 +1,9 @@
-import {RegisterUser, getRole_id, Login, refreshAccessToken, Logout} from '../controllers/user.controller.js';
+import {RegisterUser, getRole_id, Login, refreshAccessToken, Logout, updateProfilePicture, getPicture} from '../controllers/user.controller.js';
 import express from 'express';
 import { authenticateUser } from '../middleware/authMiddleware.js';
 import { verifyToken } from '../middleware/verifytokenMiddleware.js';
 import pool from '../config/db.js';
+import upload from '../middleware/uploadPic.js';
 import { updateUserProfile, handleGetUserProfile} from "../controllers/user.controller.js";
 
 
@@ -39,5 +40,8 @@ expressRouter.get('/dashboard', verifyToken, async(req, res) => {
 expressRouter.put("/update-profile",verifyToken, updateUserProfile);
 
 expressRouter.get('/get-profile',verifyToken, handleGetUserProfile);
+
+expressRouter.post('/update-profile-picture', verifyToken, upload.single('profile_picture'), updateProfilePicture);
+
 
 export default expressRouter;

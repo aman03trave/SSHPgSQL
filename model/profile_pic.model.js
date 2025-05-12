@@ -3,7 +3,7 @@ import { Schema } from "mongoose";
 
 const UserProfileSchema = new mongoose.Schema({
     user_id: {
-        type: Number, // Assuming it's from PostgreSQL
+        type: String, // Assuming it's from PostgreSQL
         required: true,
         unique: true
     },
@@ -18,6 +18,6 @@ const UserProfileSchema = new mongoose.Schema({
 });
 
 // Create the model
-const UserProfile = mongoose.model('UserProfile', UserProfileSchema);
+const UserProfile = mongoose.model('ProfilePicture', UserProfileSchema);
 
 export default UserProfile;

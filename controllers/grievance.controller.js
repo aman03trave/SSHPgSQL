@@ -8,7 +8,7 @@ export const addGrievance = async (req, res, next) => {
     try {
         console.log("FILES RECEIVED:", Object.keys(req.files));
 
-        const { grievance_category, title, description, block_id, school_id, district_name } = req.body;
+        const { grievance_category, title, description, block_id, school_id, district_name, is_public } = req.body;
         const user_id = req.user.user_id;
 
         // Fetch IDs
@@ -18,7 +18,7 @@ export const addGrievance = async (req, res, next) => {
 
         // Create Grievance
         const grievance = await grievanceService.addGrievance(
-            user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id
+            user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id, is_public
         );
 
         // Handle Multiple Files

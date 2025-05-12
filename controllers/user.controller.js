@@ -173,3 +173,87 @@ export const handleGetUserProfile = async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   };  
+
+  // controllers/profileController.js
+
+import UserProfile from '../model/profile_pic.model.js';
+
+// Importing multer middleware
+
+// Controller to handle the update of the profile picture
+export const updateProfilePicture = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "No image file uploaded" });
+        }
+
+        // User ID from the request (this can be fetched from the JWT token or session)
+        const user_id = req.user.user_id; 
+
+        // Get the image URL (path to the uploaded image on the server)
+        const profile_pic = `/uploads/${req.file.filename}`;
+        // console.log(imageUrl);
+
+        // Check if the user already has a profile picture
+        let profilePic = await UserProfile.findOne({ user_id });
+
+        if (!profilePic) {
+            // Create a new entry if no previous profile picture exists
+            profilePic = new UserProfile({
+                user_id,
+                profile_pic,
+            });
+        } else {
+            // Update the existing profile picture entry
+            profilePic.profile_pic = profile_pic;
+        }
+
+        // Save the profile picture to the database
+        await profilePic.save();
+
+        // Optionally, update the User model to store the new profile picture URL
+        // const user = await User.findById(userId);
+        // user.profilePicture = imageUrl;  // Update user's profile with the new image URL
+        // await user.save();
+
+        return res.status(200).json({
+            message: "Profile picture updated successfully"
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const getPicture = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "No image file uploaded" });
+        }
+
+        // User ID from the request (this can be fetched from the JWT token or session)
+        const user_id = req.user.user_id; 
+
+        // Get the image URL (path to the uploaded image on the server)
+        // console.log(imageUrl);
+
+        // Check if the user already has a profile picture
+        let profilePic = await UserProfile.findOne({ user_id });
+
+        if (!profilePic) {
+            // Create a new entry if no previous profile picture exists
+            return res.status(200).json({
+            message: "Profile picture not found"
+        });}
+        let profile_pic = profilePic.profile_pic
+
+        return res.status(200).json({
+            message: "Profile picture updated successfully", profile_pic
+        });
+        
+    }
+     catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
