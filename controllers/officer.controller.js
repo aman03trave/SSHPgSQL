@@ -10,6 +10,8 @@ import Grievance_Media from '../model/grievance_media.model.js';
 import ATR_Media from '../model/atr_media.model.js';
 import Officer from '../services/officer.services.js';
 import { response } from 'express';
+import { getDisposedGrievancesWithDetailsService } from "../services/officer.services.js";
+
 
 const user = new Users();
 const form = new Grievances();
@@ -538,8 +540,6 @@ export const getAssignedToMe = async (req, res) => {
 
 
 
-
-
 export const uploadATR = async (req, res) => {
   const { grievance_id } = req.body;
   const user_id = req.user.user_id;
@@ -750,4 +750,19 @@ export const Display_ATR_L2 = async (req, res, next) => {
     throw (error);
   }
 }
+
+
+export const Get_Disposed_Details = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const data = await getDisposedGrievancesWithDetailsService(userId);
+    res.json({ grievances: data });
+  } catch (error) {
+    console.error("Error in Get_Disposed_Details:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 

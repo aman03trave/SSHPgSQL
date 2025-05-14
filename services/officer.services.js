@@ -1,4 +1,6 @@
 import pool from '../config/db.js'
+import Grievance_Media from '../model/grievance_media.model.js';
+import ATR_Media from '../model/atr_media.model.js';
 
 class Officer{
     async CheckForReminderLevel1(user_id){
@@ -190,4 +192,53 @@ class Officer{
 
 };
 
+
+
 export default Officer;
+
+
+
+
+export const getDisposedGrievancesWithDetailsService = async (user_id) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        g.grievance_id,
+        g.title,
+        g.description,
+        g.created_at AS submission_time,
+        a_l.action_timestamp AS disposed_time
+      FROM grievances g
+      JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
+      WHERE a_l.action_code_id = 7 AND a_l.user_id = $1
+      ORDER BY a_l.action_timestamp DESC
+    `, [user_id]);
+
+    const grievances = [];
+
+    for (const row of result.rows) {
+      const media = await Grievance_Media.find({ grievanceId: row.grievance_id });
+      const atr = await ATR_Media.findOne({ atr_id: row.grievance_id });
+
+      grievances.push({
+        grievance_id: row.grievance_id,
+        title: row.title,
+        description: row.description,
+        submission_time: row.submission_time,
+        disposed_time: row.disposed_time,
+        grievance_media: media.map(m => ({
+          image: m.image,
+          document: m.document
+        })),
+        final_atr_report: atr ? {
+          document: atr.document,
+          uploaded_time: atr._id.getTimestamp()
+        } : null
+      });
+    }
+
+    return grievances;
+  } catch (error) {
+    throw error;
+  }
+};

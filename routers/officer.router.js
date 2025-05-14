@@ -1,9 +1,10 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { add_Officer, getGrievancesByDistrict, getBlockOfficersWithGrievanceCount, assignGrievance, getAssignedGrievances, reviewATR, getAssignedToMe, getAcceptedGrievance, uploadATR, checkForReminderLevel1, checkForReminderLevel2, L1_countUserNotification, L2_countUserNotification, Get_Disposed, get_disposed_count, get_New_Grievance_Count, getAssignedGrievanceCount, Return_Grievance, Display_ATR_L1, Display_ATR_L2, Get_Returned_Grievance, Get_Returned_Grievance_Count, Display_ATR_L1_count } from "../controllers/officer.controller.js";
+import { add_Officer, getGrievancesByDistrict, getBlockOfficersWithGrievanceCount, assignGrievance, getAssignedGrievances, reviewATR, getAssignedToMe, getAcceptedGrievance, uploadATR, checkForReminderLevel1, checkForReminderLevel2, L1_countUserNotification, L2_countUserNotification, Get_Disposed, get_disposed_count, get_New_Grievance_Count, getAssignedGrievanceCount, Return_Grievance, Display_ATR_L1, Display_ATR_L2, Get_Returned_Grievance, Get_Returned_Grievance_Count, Display_ATR_L1_count} from "../controllers/officer.controller.js";
 import e from "cors";
 import { verifyToken } from "../middleware/verifytokenMiddleware.js";
 import upload from '../middleware/uploadPic.js';
+import { Get_Disposed_Details } from "../controllers/officer.controller.js";
 
 const expressRouter = express.Router();
 
@@ -25,7 +26,7 @@ expressRouter.get('/returned_grievance', verifyToken, Get_Returned_Grievance);
 expressRouter.get('/get_returned_count', verifyToken, Get_Returned_Grievance_Count);
 expressRouter.get('/getATRL1', verifyToken, Display_ATR_L1);
 expressRouter.get('/getATRL1count', verifyToken, Display_ATR_L1_count);
-
+expressRouter.get('/get_disposed_details', verifyToken, Get_Disposed_Details);
 
 
 
@@ -43,6 +44,6 @@ expressRouter.get('/getRemindersL2', verifyToken, checkForReminderLevel2);
 expressRouter.get('/displayL2notifcount', verifyToken, L2_countUserNotification);
 expressRouter.get('/return_grievance', verifyToken, Return_Grievance);
 expressRouter.get('/getATRL2', verifyToken, Display_ATR_L2);
-
+expressRouter.get('/disposed_grievances', verifyToken, Get_Disposed_Details);
 
 export default expressRouter;
