@@ -51,7 +51,7 @@ export const add_Officer = async (req, res, next) => {
 
         
         const district_id = await form.getDistrict(district_name);
-        const hashedPassword = await bcrypt.hash(password, 20);
+        const hashedPassword = await bcrypt.hash(password, 12);
 
         // 1. Insert into users table
         const userInsertQuery = `
@@ -175,22 +175,58 @@ export const get_New_Grievance_Count = async (req, res, next) => {
 
 //get the list of block officers with the grievances count which they are currently handling
 export const getBlockOfficersWithGrievanceCount = async (req, res) => {
-  const user_id  = req.user.user_id;
+  const user_id = req.user.user_id;
+  const grievanceId = req.query.grievance_id;
+  console.log(grievanceId);
+  if (!grievanceId) {
+    return res.status(400).json({ error: "Missing grievance_id in query" });
+  }
+
   try {
-    const { district_id } = (await pool.query('SELECT district_id FROM officer_info WHERE officer_id = $1', [user_id])).rows[0];
-    const result = await pool.query(`
-      SELECT u.user_id, u.name, COUNT(ga.grievance_id) as grievance_count
-      FROM users u
-      JOIN officer_info o ON u.user_id = o.officer_id
-      LEFT JOIN grievance_assignment ga ON u.user_id = ga.assigned_to
-      WHERE o.district_id = $1 AND o.block_id IS NOT NULL
+    // Step 1: Verify district from authenticated officer
+    const districtResult = await pool.query(
+      'SELECT district_id FROM officer_info WHERE officer_id = $1',
+      [user_id]
+    );
+
+    if (districtResult.rows.length === 0) {
+      return res.status(404).json({ error: "Officer's district not found" });
+    }
+
+    const district_id = districtResult.rows[0].district_id;
+
+    // Step 2: Get block_id from grievance_id
+    const grievanceResult = await pool.query(
+      'SELECT block_id FROM grievances WHERE grievance_id = $1',
+      [grievanceId]
+    );
+
+    if (grievanceResult.rows.length === 0) {
+      return res.status(404).json({ error: "Grievance not found" });
+    }
+
+    const block_id = grievanceResult.rows[0].block_id;
+
+    // Step 3: Fetch officers based on block + district
+    const officersResult = await pool.query(`
+      SELECT  
+        u.user_id AS officer_id,
+        u.name AS officer_name,
+        COUNT(ga.grievance_id) AS grievance_count
+      FROM officer_info oi
+      JOIN users u ON oi.officer_id = u.user_id
+      LEFT JOIN grievance_assignment ga ON oi.officer_id = ga.assigned_to
+      WHERE oi.district_id = $1 AND oi.block_id = $2
       GROUP BY u.user_id, u.name
-    `, [district_id]);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    `, [district_id, block_id]);
+    console.log(officersResult.rows);
+    res.status(200).json(officersResult.rows);
+  } catch (error) {
+    console.error('Error fetching block officers:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 
 
 //assign grievances to the level2 officer
@@ -520,7 +556,7 @@ export const Get_Returned_Grievance_L1 = async (req, res) => {
     console.log("Inside the get returned function");
     const user_id = req.user.user_id;
 
-    // 🚀 Fetching grievances with action code 8 for the district officer
+    // Fetching grievances with action code 8 for the district officer
     const result = await pool.query(`
       SELECT 
           g.*,
@@ -540,15 +576,15 @@ export const Get_Returned_Grievance_L1 = async (req, res) => {
       return res.json([]);
     }
 
-    // 🚀 Get all grievance IDs to fetch media in one go
+    // Get all grievance IDs to fetch media in one go
     const grievanceIds = grievances.map(g => g.grievance_id);
 
-    // 🚀 Fetch all media related to these grievances in one call
+    // Fetch all media related to these grievances in one call
     const mediaDocs = await Grievance_Media.find({
       grievanceId: { $in: grievanceIds }
     });
 
-    // 🚀 Group media by grievance_id for easier mapping
+    // Group media by grievance_id for easier mapping
     const mediaMap = mediaDocs.reduce((acc, item) => {
       if (!acc[item.grievanceId]) {
         acc[item.grievanceId] = { images: [], documents: [] };
@@ -558,7 +594,7 @@ export const Get_Returned_Grievance_L1 = async (req, res) => {
       return acc;
     }, {});
 
-    // 🚀 Attach media to grievances
+    // Attach media to grievances
     const grievancesWithMedia = grievances.map((grievance) => ({
       ...grievance,
       media: mediaMap[grievance.grievance_id] || { images: [], documents: [] }
@@ -595,7 +631,7 @@ export const Get_Grievance_Based_On_Grievance_id_L1 = async (req, res) => {
   console.log("Grievance ID:", grievance_id);
 
   try {
-    // Make sure to include grievance_id in the SELECT to use it later
+    // Fetch the grievance from the database
     const result = await pool.query(
       `SELECT g.grievance_id, g.title, g.description, g.created_at
        FROM grievances g
@@ -615,17 +651,23 @@ export const Get_Grievance_Based_On_Grievance_id_L1 = async (req, res) => {
     const grievance = result.rows[0];
 
     // Fetch media from MongoDB (assuming grievance_id is stored as grievanceId)
-    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+    const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
+
+    // Separate images and documents (since media is a list of objects)
+    const images = media
+      .filter((item) => item.image)
+      .map((item) => item.image);
+
+    const documents = media
+      .filter((item) => item.document)
+      .map((item) => item.document);
 
     // Build the response
     const response = {
       ...grievance,
-      media: media ? {
-        images: Array.isArray(media.image) ? media.image : [media.image], // Ensuring it's an array
-        documents: Array.isArray(media.document) ? media.document : [media.document] // Ensuring it's an array
-      } : {
-        images: [],
-        documents: []
+      grievance_media: {
+        images,
+        documents
       }
     };
 
@@ -636,7 +678,7 @@ export const Get_Grievance_Based_On_Grievance_id_L1 = async (req, res) => {
     console.error("Error fetching grievance:", error);
     res.status(500).json({ error: error.message });
   }
-}
+};
 
 
 // Level 2 Officer Services
@@ -943,15 +985,15 @@ export const Get_Returned_Grievance_L2 = async (req, res) => {
       return res.json([]);
     }
 
-    // 🚀 Get all grievance IDs to fetch media in one go
+    // Get all grievance IDs to fetch media in one go
     const grievanceIds = grievances.map(g => g.grievance_id);
 
-    // 🚀 Fetch all media related to these grievances in one call
+    // Fetch all media related to these grievances in one call
     const mediaDocs = await Grievance_Media.find({
       grievanceId: { $in: grievanceIds }
     });
 
-    // 🚀 Group media by grievance_id for easier mapping
+    // Group media by grievance_id for easier mapping
     const mediaMap = mediaDocs.reduce((acc, item) => {
       if (!acc[item.grievanceId]) {
         acc[item.grievanceId] = { images: [], documents: [] };
@@ -961,7 +1003,7 @@ export const Get_Returned_Grievance_L2 = async (req, res) => {
       return acc;
     }, {});
 
-    // 🚀 Attach media to grievances
+    // Attach media to grievances
     const grievancesWithMedia = grievances.map((grievance) => ({
       ...grievance,
       media: mediaMap[grievance.grievance_id] || { images: [], documents: [] }
