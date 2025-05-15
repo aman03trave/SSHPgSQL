@@ -160,17 +160,21 @@ export const getGrievanceById = async (req, res) => {
     const grievance = result.rows[0];
 
     // Fetch media from MongoDB (assuming grievance_id is stored as grievanceId)
-    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
 
+    const images = media
+          .filter((item) => item.image)
+          .map((item) => item.image);
+
+        const documents = media
+          .filter((item) => item.document)
+          .map((item) => item.document);
     // Build the response
     const response = {
       ...grievance,
-      media: media ? {
-        images: Array.isArray(media.image) ? media.image : [media.image], // Ensuring it's an array
-        documents: Array.isArray(media.document) ? media.document : [media.document] // Ensuring it's an array
-      } : {
-        images: [],
-        documents: []
+      grievance_media: {
+        images,
+        documents
       }
     };
 
