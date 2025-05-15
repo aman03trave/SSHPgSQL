@@ -93,6 +93,21 @@ class Forms{
         }
     }
 
+    async forgotPassword(email, password) {
+        try {
+            const hashedPassword = await bcrypt.hash(password, 12);
+
+            const query = await pool.query(`Update table users set password = $1 where email = $2`, [hashedPassword, email]);
+
+            then(() => {
+            console.log("Password Updated");
+        }) 
+        }
+        catch (error) {
+            throw (error);
+        }
+    }
+
 }
 
 export default Forms;

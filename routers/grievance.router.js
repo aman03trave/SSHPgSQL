@@ -19,7 +19,8 @@ router.post(
       { name: "document", maxCount: 10 }
     ]),
     addGrievance
-  ),router.get('/getgrievance', verifyToken, getGrievance);
+  ),
+  router.get('/getgrievance', verifyToken, getGrievance);
 //for user
 router.get('/checkReminder', verifyToken, checkReminderEligibility);
 router.post('/addReminder', verifyToken, addReminder);

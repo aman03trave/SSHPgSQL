@@ -353,49 +353,79 @@ export const Display_ATR_L1 = async (req, res, next) => {
     console.log("Inside the display_atr function");
     const user_id = req.user.user_id;
     const result = await pool.query(`
-                                    SELECT 
-                                    g.title,
-                                    g.description,
-                                    u1.name AS officer_name,
-                                    g.grievance_id,
-                                    ac.action_code_id
-                                FROM 
-                                    grievances g
-                                JOIN 
-                                    atr_reports a_r ON a_r.grievance_id = g.grievance_id
-                                JOIN 
-                                    atr_review a ON a.atr_id = a_r.grievance_id
-                                JOIN 
-                                    grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-                                JOIN 
-                                    Users u1 ON u1.user_id = g_a.assigned_to
-                                JOIN 
-                                    action_log a_l ON a_l.grievance_id = g.grievance_id
-                                JOIN 
-                                    action_code ac ON ac.action_code_id = a_l.action_code_id
-                                WHERE 
-                                    g_a.assigned_by = $1 
-                                    AND a.status = 'accepted'
-                                    AND NOT EXISTS (
-                                        SELECT 1 
-                                        FROM action_log sub_a_l 
-                                        WHERE sub_a_l.grievance_id = g.grievance_id 
-                                          AND sub_a_l.action_code_id = 7
-                                    );
+                                    SELECT DISTINCT
+                                          g.title,
+                                          g.description,
+                                          u1.name AS officer_name,
+                                          g.grievance_id,
+                                          latest_action.action_code_id AS latest_action_code_id
+                                      FROM 
+                                          grievances g
+                                      JOIN 
+                                          atr_reports a_r ON a_r.grievance_id = g.grievance_id
+                                      JOIN 
+                                          atr_review a ON a.atr_id = a_r.grievance_id
+                                      JOIN 
+                                          grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+                                      JOIN 
+                                          users u1 ON u1.user_id = g_a.assigned_to
+                                      LEFT JOIN (
+                                          -- Subquery to get the latest action for each grievance
+                                          SELECT 
+                                              grievance_id, 
+                                              action_code_id
+                                          FROM 
+                                              action_log al
+                                          WHERE 
+                                              (al.grievance_id, al.action_timestamp) IN (
+                                                  SELECT 
+                                                      grievance_id, 
+                                                      MAX(action_timestamp) 
+                                                  FROM action_log 
+                                                  GROUP BY grievance_id
+                                              )
+                                      ) latest_action ON latest_action.grievance_id = g.grievance_id
+                                      WHERE 
+                                          g_a.assigned_by = $1
+                                          AND a.status = 'accepted'
+                                          AND NOT EXISTS (
+                                              SELECT 1 
+                                              FROM action_log sub_a_l 
+                                              WHERE sub_a_l.grievance_id = g.grievance_id 
+                                                AND sub_a_l.action_code_id IN (7, 4)
+                                          );
+
 `, [user_id]);
     const grievanceRows = result.rows;
 
     const grievances = await Promise.all(
       grievanceRows.map(async (grievance) => {
-        const media = await ATR_Media.findOne({ atr_id: grievance.grievance_id });
+        // ✅ 1. Fetch Grievance Media
+        const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
+
+        // Separate images and documents
+        const images = media.filter((item) => item.image).map((item) => item.image);
+        const documents = media.filter((item) => item.document).map((item) => item.document);
+
+        const atrVersions = await ATR_Media.find({ atr_id: grievance.grievance_id }).sort({ version: 1 });
+
+        
+        const ATR = atrVersions.map((atr) => ({
+          version: [atr.version],
+          documents: atr.document ? [atr.document] : []
+        }));
+
         return {
           ...grievance,
-          media: media ? {
-            document: media.document
-          } : null
+          grievance_media: {
+            images,
+            documents,
+          },
+          ATR,
         };
       })
     );
+
 
     res.json(grievances);
 
@@ -522,27 +552,98 @@ export const checkForReminderLevel1 = async (req, res) => {
 
     const query = await pool.query(
       `SELECT 
-          a.action_id,
-          a.grievance_id,
-          a.user_id AS officer_id,
-          ac.code AS action_code,
-          a.action_timestamp,
-          g.title,
-          g.description,
-          g.created_at,
-          u1.name as level1_officer,
-          u2.name as complainant
-        FROM Action_Log a
-        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
-        JOIN officer_info o ON o.officer_id = $1
-        JOIN Grievances g ON g.grievance_id = a.grievance_id
-        JOIN Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-        JOIN Users u1 ON u1.user_id = g_a.assigned_to
-        JOIN Complainants c on c.complainant_id = g.complainant_id
-        JOIN Users u2 ON u2.user_id = c.user_id
-        WHERE a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND o.block_id IS NULL
-        ORDER BY a.action_timestamp DESC`, [user_id]
-    );
+    main.action_id,
+    main.grievance_id,
+    main.officer_id,
+    main.action_code,
+    main.action_timestamp,
+    main.title,
+    main.description,
+    main.created_at,
+    main.level1_officer,
+    main.complainant,
+    main.reminder_id,
+    main.reminder_timestamp,
+    main.viewed,
+    main.type
+FROM (
+    -- Subquery for Reminders (only one per grievance if exists and not viewed)
+    SELECT 
+        DISTINCT ON (g.grievance_id) 
+        NULL AS action_id,
+        g.grievance_id,
+        g_a.assigned_to AS officer_id,
+        'Reminder' AS action_code,
+        r.reminder_timestamp AS action_timestamp,
+        g.title,
+        g.description,
+        g.created_at,
+        u1.name AS level1_officer,
+        u2.name AS complainant,
+        r.reminder_id,
+        r.reminder_timestamp,
+        r.viewed,
+        'Reminder' AS type
+    FROM 
+        Grievances g
+    JOIN 
+        Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+    JOIN 
+        Users u1 ON u1.user_id = g_a.assigned_to
+    JOIN 
+        Complainants c ON c.complainant_id = g.complainant_id
+    JOIN 
+        Users u2 ON u2.user_id = c.user_id
+    LEFT JOIN 
+        Reminders r ON r.grievance_id = g.grievance_id
+    WHERE 
+        r.reminder_id IS NOT NULL
+    
+    -- No ORDER BY inside the subquery
+    -- The ordering will be done in the main query
+
+    UNION ALL
+
+    -- Subquery for Notifications from Action Log
+    SELECT 
+        a.action_id,
+        a.grievance_id,
+        a.user_id AS officer_id,
+        ac.code AS action_code,
+        a.action_timestamp,
+        g.title,
+        g.description,
+        g.created_at,
+        u1.name AS level1_officer,
+        u2.name AS complainant,
+        NULL AS reminder_id,
+        NULL AS reminder_timestamp,
+        NULL AS viewed,
+        'Notification' AS type
+    FROM 
+        Action_Log a
+    JOIN 
+        Action_Code ac ON a.action_code_id = ac.action_code_id
+    JOIN 
+        officer_info o ON o.officer_id = $1
+    JOIN 
+        Grievances g ON g.grievance_id = a.grievance_id
+    JOIN 
+        Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+    JOIN 
+        Users u1 ON u1.user_id = g_a.assigned_to
+    JOIN 
+        Complainants c ON c.complainant_id = g.complainant_id
+    JOIN 
+        Users u2 ON u2.user_id = c.user_id
+    WHERE 
+        a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) 
+        AND o.block_id IS NULL
+) AS main
+ORDER BY 
+    main.action_timestamp DESC, main.reminder_timestamp DESC;
+
+`,[user_id]);
 
     res.status(200).json(query.rows);
   } catch (error) {
@@ -653,15 +754,13 @@ export const Get_Grievance_Based_On_Grievance_id_L1 = async (req, res) => {
     // Fetch media from MongoDB (assuming grievance_id is stored as grievanceId)
     const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
 
-    // Separate images and documents (since media is a list of objects)
     const images = media
-      .filter((item) => item.image)
-      .map((item) => item.image);
+          .filter((item) => item.image)
+          .map((item) => item.image);
 
-    const documents = media
-      .filter((item) => item.document)
-      .map((item) => item.document);
-
+        const documents = media
+          .filter((item) => item.document)
+          .map((item) => item.document);
     // Build the response
     const response = {
       ...grievance,
@@ -680,6 +779,30 @@ export const Get_Grievance_Based_On_Grievance_id_L1 = async (req, res) => {
   }
 };
 
+// Controller function to update viewed status
+
+export const updateNotificationStatus = async (req, res) => {
+  const { grievance_id } = req.body;
+  console.log("Inside the updateNotificationStatus");
+  try {
+    // Update the status to true
+    const result = await pool.query(
+      `UPDATE reminders SET viewed = true WHERE grievance_id = $1 RETURNING *`,
+      [grievance_id]
+    );
+
+    if (result.rows.length > 0) {
+      res.status(200).json({ message: 'Notification status updated successfully.' });
+    } else {
+      res.status(404).json({ message: 'Notification not found.' });
+    }
+  } catch (error) {
+    console.error("Error updating notification status:", error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+
 
 // Level 2 Officer Services
 
@@ -688,27 +811,38 @@ export const getAssignedToMe = async (req, res) => {
   const user_id = req.user.user_id;
   try {
     const result = await pool.query(`
-      SELECT 
-        ga.assigned_at,
-        g.grievance_id,
-        g.title,
-        g.description,
-        g.created_at,
-        b.block_name,
-        s.school_name,
-        u.name
-      FROM grievance_assignment ga
-      JOIN grievances g ON g.grievance_id = ga.grievance_id
-      JOIN blocks b ON b.block_id = g.block_id
-      JOIN school s ON g.school_id = s.school_id
-      JOIN users u ON u.user_id = ga.assigned_by
-      LEFT JOIN (
-        SELECT DISTINCT ON (grievance_id) grievance_id, action_code_id
-        FROM action_log
-        ORDER BY grievance_id, action_timestamp DESC
-      ) latest_action ON latest_action.grievance_id = ga.grievance_id
-      WHERE ga.assigned_to = $1
-        AND (latest_action.action_code_id IS NULL OR latest_action.action_code_id NOT IN (8, 9));
+                                    SELECT 
+                                        ga.assigned_at,
+                                        g.grievance_id,
+                                        g.title,
+                                        g.description,
+                                        g.created_at,
+                                        b.block_name,
+                                        s.school_name,
+                                        u.name,
+                                        COALESCE(latest_action.action_code_id, 0) AS latest_action_code_id  -- If no action exists, defaults to 0
+                                    FROM grievance_assignment ga
+                                    JOIN grievances g ON g.grievance_id = ga.grievance_id
+                                    JOIN blocks b ON b.block_id = g.block_id
+                                    JOIN school s ON g.school_id = s.school_id
+                                    JOIN users u ON u.user_id = ga.assigned_by
+                                    LEFT JOIN (
+                                        -- Subquery to get the latest action for each grievance
+                                        SELECT grievance_id, action_code_id
+                                        FROM action_log
+                                        WHERE action_timestamp = (
+                                            SELECT MAX(action_timestamp)
+                                            FROM action_log sub
+                                            WHERE sub.grievance_id = action_log.grievance_id
+                                        )
+                                    ) latest_action ON latest_action.grievance_id = ga.grievance_id
+                                    WHERE ga.assigned_to = $1
+                                      AND NOT EXISTS (
+                                          SELECT 1 
+                                          FROM action_log sub_al
+                                          WHERE sub_al.grievance_id = ga.grievance_id 
+                                            AND sub_al.action_code_id IN (8, 9)
+                                      );
     `, [user_id]);
     
       const grievanceRows = result.rows;
@@ -779,8 +913,9 @@ export const uploadATR = async (req, res) => {
 
     if (documentPath) {
       const grievanceMedia = new ATR_Media({
-        atr_id,
+        atr_id : grievance_id,
         document: documentPath,
+        version
       });
       await grievanceMedia.save();
     }
@@ -802,48 +937,91 @@ export const uploadATR = async (req, res) => {
 
 export const getAcceptedGrievance = async (req, res) => {
   const user_id = req.user.user_id;
+
   try {
-    const result = await pool.query(`
-      SELECT 
-        g.grievance_id,
-        g.title,
-        g.description,
-        u.name AS assigned_by,
-        ga.assigned_at
-      FROM grievance_assignment ga
-      JOIN grievances g ON g.grievance_id = ga.grievance_id
-      JOIN users u ON u.user_id = ga.assigned_by
-      LEFT JOIN (
-        SELECT DISTINCT ON (grievance_id) grievance_id, action_code_id
-        FROM action_log
-        ORDER BY grievance_id, action_timestamp DESC
-      ) latest_action ON latest_action.grievance_id = ga.grievance_id
-      WHERE ga.assigned_to = $1
-        AND (latest_action.action_code_id IN (9));
-    `, [user_id]);
-    
+    // 🔎 Fetch grievances from PostgreSQL
+    const result = await pool.query(
+      `
+                                  SELECT 
+                                  g.grievance_id,
+                                  g.title,
+                                  g.description,
+                                  u.name AS assigned_by,
+                                  ga.assigned_at,
+                                  COALESCE(latest_action.action_code_id, 0) AS latest_action_code_id
+                              FROM grievance_assignment ga
+                              JOIN grievances g ON g.grievance_id = ga.grievance_id
+                              JOIN users u ON u.user_id = ga.assigned_by
+                              LEFT JOIN (
+                                  -- Subquery to fetch the latest action per grievance
+                                  SELECT 
+                                      grievance_id, 
+                                      action_code_id
+                                  FROM action_log
+                                  WHERE (grievance_id, action_timestamp) IN (
+                                      SELECT 
+                                          grievance_id, 
+                                          MAX(action_timestamp) 
+                                      FROM action_log
+                                      GROUP BY grievance_id
+                                  )
+                              ) latest_action ON latest_action.grievance_id = ga.grievance_id
+                              WHERE ga.assigned_to = $1
+                                AND (
+                                    -- Checking if any action_code_id exists historically
+                                    EXISTS (
+                                        SELECT 1 
+                                        FROM action_log sub_al
+                                        WHERE sub_al.grievance_id = ga.grievance_id 
+                                          AND sub_al.action_code_id IN (3, 5, 6, 9)
+                                    ) 
+                                    OR latest_action.action_code_id IS NULL
+                                );
+
+      `,
+      [user_id]
+    );
 
     const grievanceRows = result.rows;
 
-    // Attach MongoDB media
+    // 🔄 Attach MongoDB media and ATR versions
     const grievances = await Promise.all(
       grievanceRows.map(async (grievance) => {
-        const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+        
+        const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
+
+       
+        const images = media.filter((item) => item.image).map((item) => item.image);
+        const documents = media.filter((item) => item.document).map((item) => item.document);
+
+       
+        const atrVersions = await ATR_Media.find({ atr_id: grievance.grievance_id }).sort({ version: 1 });
+
+       
+        const ATR = atrVersions.map((atr) => ({
+          version: [atr.version],  
+          documents: atr.document ? [atr.document] : []
+        }));
+
+       
         return {
           ...grievance,
-          media: media ? {
-            image: media.image,
-            document: media.document
-          } : null
+          grievance_media: {
+            images,
+            documents,
+          },
+          ATR,
         };
       })
     );
 
     res.json(grievances);
+
   } catch (err) {
+    console.error(err.message);
     res.status(500).json({ error: err.message });
   }
-}
+};
 
 
 export const checkForReminderLevel2 = async (req, res) => {
@@ -853,25 +1031,94 @@ export const checkForReminderLevel2 = async (req, res) => {
 
     const query = await pool.query(
       `SELECT 
-          a.action_id,
-          a.grievance_id,
-          a.user_id AS officer_id,
-          ac.code AS action_code,
-          a.action_timestamp,
-          g.title,
-          g.description,
-          g.created_at,
-          u1.name as level1officer,
-          u2.name as complainant
-        FROM Action_Log a
-        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
-        JOIN grievance_assignment  g_a ON g_a.grievance_id = a.grievance_id
-        JOIN Grievances g ON g.grievance_id = a.grievance_id
-        JOIN Users u1 ON u1.user_id = g_a.assigned_by
-        JOIN Complainants c on c.complainant_id = g.complainant_id
-        JOIN Users u2 ON u2.user_id = c.user_id
-        WHERE a.action_code_id IN (2,3,4,5,6,7,8,9) and g_a.assigned_to = $1
-        ORDER BY a.action_timestamp DESC`, [user_id]
+    main.action_id,
+    main.grievance_id,
+    main.officer_id,
+    main.action_code,
+    main.action_timestamp,
+    main.title,
+    main.description,
+    main.created_at,
+    main.level1_officer,
+    main.complainant,
+    main.reminder_id,
+    main.reminder_timestamp,
+    main.viewed,
+    main.type
+FROM (
+    -- 🔔 Subquery for Reminders (Level 2 Officer)
+    SELECT 
+        DISTINCT ON (g.grievance_id) 
+        NULL AS action_id,
+        g.grievance_id,
+        g_a.assigned_to AS officer_id,
+        'Reminder' AS action_code,
+        r.reminder_timestamp AS action_timestamp,
+        g.title,
+        g.description,
+        g.created_at,
+        u1.name AS level1_officer,
+        u2.name AS complainant,
+        r.reminder_id,
+        r.reminder_timestamp,
+        r.viewed,
+        'Reminder' AS type
+    FROM 
+        Grievances g
+    JOIN 
+        Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+    JOIN 
+        Users u1 ON u1.user_id = g_a.assigned_by
+    JOIN 
+        Complainants c ON c.complainant_id = g.complainant_id
+    JOIN 
+        Users u2 ON u2.user_id = c.user_id
+    LEFT JOIN 
+        Reminders r ON r.grievance_id = g.grievance_id
+    WHERE 
+        g_a.assigned_to = $1
+        AND r.reminder_id IS NOT NULL
+
+    UNION ALL
+
+    -- 🔔 Subquery for Notifications from Action Log (Level 2 Officer)
+    SELECT 
+        a.action_id,
+        a.grievance_id,
+        a.user_id AS officer_id,
+        ac.code AS action_code,
+        a.action_timestamp,
+        g.title,
+        g.description,
+        g.created_at,
+        u1.name AS level1_officer,
+        u2.name AS complainant,
+        NULL AS reminder_id,
+        NULL AS reminder_timestamp,
+        NULL AS viewed,
+        'Notification' AS type
+    FROM 
+        Action_Log a
+    JOIN 
+        Action_Code ac ON a.action_code_id = ac.action_code_id
+    JOIN 
+        Grievance_assignment g_a ON g_a.grievance_id = a.grievance_id
+    JOIN 
+        Grievances g ON g.grievance_id = a.grievance_id
+    JOIN 
+        Users u1 ON u1.user_id = g_a.assigned_by
+    JOIN 
+        Complainants c ON c.complainant_id = g.complainant_id
+    JOIN 
+        Users u2 ON u2.user_id = c.user_id
+    WHERE 
+        a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
+        AND g_a.assigned_to = $1
+        
+) AS main
+ORDER BY 
+    main.action_timestamp DESC, main.reminder_timestamp DESC;
+`, [user_id]
     );
 
     res.status(200).json(query.rows);
@@ -905,18 +1152,26 @@ export const L2_countUserNotification = async (req, res) => {
 export const Return_Grievance = async (req, res) => {
   
   try {
-    const {grievance_id} = req.body;
-    const user_id = req.user.user_id;
+  await pool.query('BEGIN');
 
-    const result = await pool.query(`
-                                    DELETE FROM grievance_assignments where assigned_to = $1 AND grievance_id = $2`, [user_id, grievance_id]);
-    
-    const add_log = await pool.query('INSERT INTO action_log(grievance_id, user_id, action_code_id) values($1, $2, 8)', [grievance_id, user_id]);
+  await pool.query(`
+    DELETE FROM grievance_assignments 
+    WHERE assigned_to = $1 AND grievance_id = $2
+  `, [user_id, grievance_id]);
 
-    res.status(200).message("Grievance returned successfully.");
-  } catch (error) {
-    throw(error);
-  }
+  await pool.query(`
+    DELETE FROM action_log 
+    WHERE user_id = $1 AND action_code_id IN (2, 9)
+  `, [user_id]);
+
+  await pool.query('COMMIT');
+  console.log("Records deleted successfully.");
+} catch (error) {
+  await pool.query('ROLLBACK');
+  console.error("Transaction failed: ", error);
+  throw error;
+}
+
 }
 
 
