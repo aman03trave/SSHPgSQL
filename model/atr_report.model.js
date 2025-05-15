@@ -13,6 +13,7 @@ pool
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     version INTEGER DEFAULT 1
 );
+
 `)
     } catch (error) {
         throw (error);

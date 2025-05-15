@@ -66,7 +66,7 @@ export const Login = async (req, res, next) => {
         const accessToken = jwt.sign(
             { user_id: userAuth.user_id, role_id: userAuth.role_id, email: userAuth.email },
             process.env.JWT_SECRET, 
-            { expiresIn: '15m' } // Short expiry for security
+            { expiresIn: '1d' } // Short expiry for security
         );
 
         // Generate refresh token
@@ -105,7 +105,7 @@ export const refreshAccessToken = async (req, res, next) => {
             const newAccessToken = jwt.sign(
                 { user_id: decoded.user_id },
                 process.env.JWT_SECRET, 
-                { expiresIn: '15m' }
+                { expiresIn: '1d' }
             );
 
             // Store new access token in cookie
@@ -113,7 +113,7 @@ export const refreshAccessToken = async (req, res, next) => {
                 httpOnly: true, 
                 secure: process.env.NODE_ENV === 'production', 
                 sameSite: 'Strict',
-                maxAge: 15 * 60 * 1000 // 15 minutes
+                maxAge: 24 * 60 * 60 * 1000 // 15 minutes 15 * 60
             });
 
             res.json({ status: true, message: 'New access token generated', newAccessToken });
@@ -127,7 +127,7 @@ export const Logout = async (req, res, next) => {
     try {
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
-        res.json({ status: true, message: 'Logged out successfully' });
+        res.status(200).json({ status: true, message: 'Logged out successfully' });
     } catch (err) {
         next(err);
     }

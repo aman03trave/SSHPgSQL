@@ -26,7 +26,7 @@ class Grievances {
             const result = await pool.query(
                 `INSERT INTO Grievances(grievance_id, complainant_id, grievance_category_id, title, description, is_public, district_id, block_id, school_id) 
                  VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING grievance_id`,
-                [grievance_id, complainant_id, grievance_category_id, title, description, district_id, block_id, school_id]
+                [grievance_id, complainant_id, grievance_category_id, title, description, is_public, district_id, block_id, school_id, ]
             );
 
             await this.addAction(grievance_id, user_id, 1);
@@ -119,40 +119,58 @@ class Grievances {
     }
 
     async getGrievance(complainantId) {
-        try {
-            const result = await pool.query(`
-                SELECT g.*, a.*, ac.*
-                FROM Grievances g
-                LEFT JOIN (
-                    SELECT DISTINCT ON (grievance_id) *
-                    FROM action_log
-                    ORDER BY grievance_id, action_timestamp DESC
-                ) a ON g.grievance_id = a.grievance_id
-                LEFT JOIN action_code ac ON a.action_code_id = ac.action_code_id
-                WHERE g.complainant_id = $1;
+  try {
+    const result = await pool.query(
+      `
+        SELECT 
+            g.*,
+            a_l.action_timestamp,
+            ac.action_code_id,
+            ac.code AS action_description
+        FROM Grievances g
+        LEFT JOIN LATERAL (
+            SELECT 
+                a.action_timestamp,
+                a.action_code_id
+            FROM action_log a
+            WHERE a.grievance_id = g.grievance_id
+            ORDER BY a.action_timestamp DESC
+            LIMIT 1
+        ) a_l ON true
+        LEFT JOIN action_code ac ON a_l.action_code_id = ac.action_code_id
+        WHERE g.complainant_id = $1;
+      `,
+      [complainantId]
+    );
 
-            `, [complainantId]);
+    const grievances = result.rows;
 
-            const grievances = result.rows;
+    // Attach MongoDB Media (Optimized Promise.all to run in parallel)
+    const grievancesWithMedia = await Promise.all(
+      grievances.map(async (grievance) => {
+        const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
+        
+        // Convert MongoDB response to an array of media
+        const images = media.map((item) => item.image).filter(Boolean);
+        const documents = media.map((item) => item.document).filter(Boolean);
 
-            const grievancesWithMedia = await Promise.all(
-                grievances.map(async (grievance) => {
-                    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
-                    return {
-                        ...grievance,
-                        media: media ? {
-                            image: media.image,
-                            document: media.document
-                        } : null
-                    };
-                })
-            );
+        return {
+          ...grievance,
+          media: {
+            images,
+            documents
+          }
+        };
+      })
+    );
 
-            return grievancesWithMedia;
-        } catch (e) {
-            throw new Error(`Error fetching grievance with media: ${e.message}`);
-        }
-    }
+    return grievancesWithMedia;
+  } catch (e) {
+    throw new Error(`Error fetching grievance with media: ${e.message}`);
+  }
+}
+
+
 
     async ReminderEligibility(user_id) {
         try {
@@ -275,7 +293,7 @@ GROUP BY
     FROM 
         atr_review arw
     JOIN 
-        atr_reports atr ON arw.atr_id = atr.atr_id
+        atr_reports atr ON arw.atr_id = atr.grievance_id
     JOIN 
         grievances g ON atr.grievance_id = g.grievance_id
     JOIN 
@@ -392,7 +410,7 @@ ORDER BY timestamp DESC;
 
                 OFFICER_INFO o ON o.district_id = g.district_id
 
-                WHERE o.officer_id = $1
+                WHERE o.officer_id = $1 and g.is_public = true
 
                 ORDER BY 
                 g.created_at desc

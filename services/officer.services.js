@@ -21,13 +21,12 @@ class Officer{
                 u2.name as complainant
               FROM Action_Log a
               JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
-              JOIN officer_info o ON o.officer_id = $1
               JOIN Grievances g ON g.grievance_id = a.grievance_id
               JOIN Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
               JOIN Users u1 ON u1.user_id = g_a.assigned_to
               JOIN Complainants c on c.complainant_id = g.complainant_id
               JOIN Users u2 ON u2.user_id = c.user_id
-              WHERE a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9) AND o.block_id IS NULL
+              WHERE g_a.assigned_by = $1 and a.action_code_id IN (1, 2, 3, 4, 5, 6, 7, 8, 9)
               ORDER BY a.action_timestamp DESC`, [user_id]
           );
       
@@ -44,26 +43,25 @@ class Officer{
       
           const query = await pool.query(
             `SELECT 
-                a.action_id,
-                a.grievance_id,
-                a.user_id AS officer_id,
-                ac.code AS action_code,
-                a.action_timestamp,
-                g.title,
-                g.description,
-                g.created_at,
-                u1.name as level1officer,
-                u2.name as complainant
-              FROM Action_Log a
-              JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
-              JOIN officer_info o ON o.officer_id = $1
-              JOIN Grievances g ON g.grievance_id = a.grievance_id
-              JOIN Grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-              JOIN Users u1 ON u1.user_id = g_a.assigned_by
-              JOIN Complainants c on c.complainant_id = g.complainant_id
-              JOIN Users u2 ON u2.user_id = c.user_id
-              WHERE a.action_code_id IN (2,3,4,5,6,7,8,9)
-              ORDER BY a.action_timestamp DESC`, [user_id]
+          a.action_id,
+          a.grievance_id,
+          a.user_id AS officer_id,
+          ac.code AS action_code,
+          a.action_timestamp,
+          g.title,
+          g.description,
+          g.created_at,
+          u1.name as level1officer,
+          u2.name as complainant
+        FROM Action_Log a
+        JOIN Action_Code ac ON a.action_code_id = ac.action_code_id
+        JOIN grievance_assignment  g_a ON g_a.grievance_id = a.grievance_id
+        JOIN Grievances g ON g.grievance_id = a.grievance_id
+        JOIN Users u1 ON u1.user_id = g_a.assigned_by
+        JOIN Complainants c on c.complainant_id = g.complainant_id
+        JOIN Users u2 ON u2.user_id = c.user_id
+        WHERE a.action_code_id IN (2,3,4,5,6,7,8,9) and g_a.assigned_to = $1
+        ORDER BY a.action_timestamp DESC`, [user_id]
           );
           console.log(query.rowCount);
           return query.rowCount;
@@ -98,6 +96,7 @@ class Officer{
       async getNewGrievanceCount(user_id){
       try {
     // Get district ID for the officer
+    console.log(user_id);
     const district = await pool.query(
       'SELECT district_id FROM officer_info WHERE officer_id = $1',
       [user_id]
@@ -124,9 +123,11 @@ class Officer{
         AND ga.grievance_id IS NULL
     `, [districtId]);
 
-    const grievanceRows = result.rowCount;
+    console.log(result)
 
-    return grievanceRows;
+    return result.rowCount;
+
+    
       }
       catch(error){
         throw (error);
@@ -135,17 +136,20 @@ class Officer{
 
     async get_disposed(user_id) {
       try {
-    const query = await pool.query(`
-                                  SELECT g.grievance_id,
+    const result = await pool.query(`
+                                SELECT 
+                                  g.grievance_id,
                                   g.title,
                                   g.description,
-                                  a_l.action_timestamp
-                                  
-                                  FROM officer_info o
-                                  JOIN grievances g ON o.district_id = g.district_id
-                                  JOIN action_log a_l ON o.officer_id = a_l.user_id
-                                  WHERE a_l.action_code_id = 7 AND o.officer_id = $1`, [user_id]);
-     return query.rowCount;
+                                  g.created_at AS submission_time,
+                                  a_l.action_timestamp AS disposed_time
+                                FROM grievances g
+                                JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
+                                WHERE a_l.action_code_id = 7 AND a_l.user_id = $1
+                                ORDER BY a_l.action_timestamp DESC
+                                `, [user_id]);
+    console.log(result);
+     return result.rowCount;
   } catch (error) {
     throw (error);
   }
@@ -174,20 +178,60 @@ class Officer{
     console.log("Inside the display_atr function");
    
     const result = await pool.query(`
-                                    SELECT g.title,
+                                    SELECT 
+                                    g.title,
                                     g.description,
-                                    u.name
-                                    FROM grievances g
-                                    JOIN atr_reports a_r ON a_r.grievance_id = g.grievance_id
-                                    JOIN grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-                                    JOIN Users u ON u.user_id = g_a.assigned_to
-                                    where g_a.assigned_by = $1`, [user_id]);
+                                    u1.name AS officer_name,
+                                    g.grievance_id,
+                                    ac.action_code_id
+                                FROM 
+                                    grievances g
+                                JOIN 
+                                    atr_reports a_r ON a_r.grievance_id = g.grievance_id
+                                JOIN 
+                                    atr_review a ON a.atr_id = a_r.grievance_id
+                                JOIN 
+                                    grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+                                JOIN 
+                                    Users u1 ON u1.user_id = g_a.assigned_to
+                                JOIN 
+                                    action_log a_l ON a_l.grievance_id = g.grievance_id
+                                JOIN 
+                                    action_code ac ON ac.action_code_id = a_l.action_code_id
+                                WHERE 
+                                    g_a.assigned_by = $1
+                                    AND a.status = 'accepted'
+                                    AND NOT EXISTS (
+                                        SELECT 1 
+                                        FROM action_log sub_a_l 
+                                        WHERE sub_a_l.grievance_id = g.grievance_id 
+                                          AND sub_a_l.action_code_id = 7
+                                    );
+`, [user_id]);
     
       return result.rowCount;
 
   } catch (error) {
     throw (error);
   }
+}
+
+async display_returned_grievance_l2(user_id){
+  try {
+    console.log("Inside the get returned function");
+
+    const result = await pool.query(`
+                                    SELECT g.*,
+                                    a_l.action_timestamp
+                                    From grievances g
+                                    JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
+                                    JOIN officer_info o ON o.block_id = g.block_id
+                                    where a_l.action_code_id = 8 and o.officer_id = $1`, [user_id]);
+
+    return result.rowCount;
+    } catch (err){
+      throw (err);
+    }
 }
 
 };

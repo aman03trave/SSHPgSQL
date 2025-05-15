@@ -5,38 +5,67 @@ import Grievance_Media from "../model/grievance_media.model.js";
 const grievanceService = new Grievances();
 
 export const addGrievance = async (req, res, next) => {
-    try {
-        console.log("FILES RECEIVED:", Object.keys(req.files));
+  try {
+    console.log("FILES RECEIVED:", Object.keys(req.files));
 
-        const { grievance_category, title, description, block_id, school_id, district_name, is_public } = req.body;
-        const user_id = req.user.user_id;
+    const {
+      grievance_category,
+      title,
+      description,
+      block_id,
+      school_id,
+      district_name,
+      is_public
+    } = req.body;
 
-        // Fetch IDs
-        const complainant_id = await grievanceService.getComplainant(user_id);
-        const district_id = await grievanceService.getDistrict(district_name);
-        const grievance_category_id = await grievanceService.getgrievancecategory(grievance_category);
+    const user_id = req.user.user_id;
 
-        // Create Grievance
-        const grievance = await grievanceService.addGrievance(
-            user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id, is_public
-        );
+    // Fetching IDs for insertion
+    const [complainant_id, district_id, grievance_category_id] = await Promise.all([
+      grievanceService.getComplainant(user_id),
+      grievanceService.getDistrict(district_name),
+      grievanceService.getgrievancecategory(grievance_category)
+    ]);
 
-        // Handle Multiple Files
-        const imagePaths = req.files["image"]?.map(file => file.path) || [];
-        const documentPaths = req.files["document"]?.map(file => file.path) || [];
+    console.log(user_id, complainant_id, grievance_category_id, title, description, block_id, school_id, district_id, is_public);
 
-        for (const imagePath of imagePaths) {
-            await grievanceService.addGrievanceMedia(grievance, imagePath, null);
-        }
-        for (const documentPath of documentPaths) {
-            await grievanceService.addGrievanceMedia(grievance, null, documentPath);
-        }
-        console.log("////",grievance);
-        res.json({ status: true, message: "Grievance added successfully", grievance });
-    } catch (error) {
-        next(error);
-    }
+    // Creating Grievance
+    const grievance = await grievanceService.addGrievance(
+      user_id,
+      complainant_id,
+      grievance_category_id,
+      title,
+      description,
+      block_id,
+      school_id,
+      district_id,
+      is_public
+    );
+
+    // Handle Multiple Files
+    const imagePaths = req.files["image"]?.map((file) => file.path) || [];
+    const documentPaths = req.files["document"]?.map((file) => file.path) || [];
+
+    // Inserting Media in Bulk
+    const mediaPromises = [];
+
+    imagePaths.forEach((imagePath) => {
+      mediaPromises.push(grievanceService.addGrievanceMedia(grievance, imagePath, null));
+    });
+
+    documentPaths.forEach((documentPath) => {
+      mediaPromises.push(grievanceService.addGrievanceMedia(grievance, null, documentPath));
+    });
+
+    await Promise.all(mediaPromises);
+
+    console.log("Grievance Created Successfully:", grievance);
+    res.json({ status: true, message: "Grievance added successfully", grievance });
+  } catch (error) {
+    next(error);
+  }
 };
+
 
 
 export const getGrievance = async (req, res, next) => {
@@ -89,8 +118,7 @@ export const addActionLog = async (req, res) => {
         res.status(200).json(result);
     } catch (error) {
         throw(error);
-        
-    }
+}
 }
 
 export const getReminderStatus = async (req, res) => {
@@ -106,41 +134,55 @@ export const getReminderStatus = async (req, res) => {
 };
 
 export const getGrievanceById = async (req, res) => {
-    const { grievance_id } = req.query;
-    console.log("Grievance ID:", grievance_id);  
-  
-    try {
-      // Make sure to include grievance_id in the SELECT to use it later
-      const result = await pool.query(
-        `SELECT grievance_id, title, description, created_at
-         FROM grievances
-         WHERE grievance_id = $1`,
-        [grievance_id]
-      );
-  
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'Grievance not found' });
-      }
-  
-      const grievance = result.rows[0];
-  
-      // Fetch media from MongoDB (assuming grievance_id is stored as grievanceId)
-      const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
-  
-      const response = {
-        ...grievance,
-        media: media ? {
-          image: media.image,
-          document: media.document
-        } : null
-      };
-  
-      res.status(200).json(response);
-    } catch (error) {
-      console.error("Error fetching grievance:", error);
-      res.status(500).json({ error: error.message });
+  const { grievance_id } = req.query;
+  const user_id = req.user.user_id;
+
+  console.log("Grievance ID:", grievance_id);
+
+  try {
+    // Make sure to include grievance_id in the SELECT to use it later
+    const result = await pool.query(
+      `SELECT g.grievance_id, g.title, g.description, g.created_at
+       FROM grievances g
+       JOIN Complainants c ON c.complainant_id = g.complainant_id
+       WHERE c.user_id = $1 AND g.grievance_id = $2`,
+      [user_id, grievance_id]
+    );
+
+    console.log(user_id, grievance_id);
+
+    // Check if the grievance is found
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Grievance not found' });
     }
-  };
+
+    // Get the first grievance from the result
+    const grievance = result.rows[0];
+
+    // Fetch media from MongoDB (assuming grievance_id is stored as grievanceId)
+    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
+
+    // Build the response
+    const response = {
+      ...grievance,
+      media: media ? {
+        images: Array.isArray(media.image) ? media.image : [media.image], // Ensuring it's an array
+        documents: Array.isArray(media.document) ? media.document : [media.document] // Ensuring it's an array
+      } : {
+        images: [],
+        documents: []
+      }
+    };
+
+    // Send the response
+    res.status(200).json(response);
+
+  } catch (error) {
+    console.error("Error fetching grievance:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
   
 
   export const countUserNotification = async (req, res) => {
