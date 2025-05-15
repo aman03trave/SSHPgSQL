@@ -75,5 +75,17 @@ export const getUserProfile = async(req, res, next) => {
     }
 }
 
+export const ForgetPassword = async(req, res) => {
+    try {
+        const {email, password} = req.body;
+
+        const updatePassword = form.forgotPassword(email, password);
+
+        res.json({message:"Password updated successfully"});
+    } catch (error) {
+        
+    }
+}
+
 
 

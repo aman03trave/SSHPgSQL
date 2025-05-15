@@ -178,35 +178,46 @@ class Officer{
     console.log("Inside the display_atr function");
    
     const result = await pool.query(`
-                                    SELECT 
-                                    g.title,
-                                    g.description,
-                                    u1.name AS officer_name,
-                                    g.grievance_id,
-                                    ac.action_code_id
-                                FROM 
-                                    grievances g
-                                JOIN 
-                                    atr_reports a_r ON a_r.grievance_id = g.grievance_id
-                                JOIN 
-                                    atr_review a ON a.atr_id = a_r.grievance_id
-                                JOIN 
-                                    grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-                                JOIN 
-                                    Users u1 ON u1.user_id = g_a.assigned_to
-                                JOIN 
-                                    action_log a_l ON a_l.grievance_id = g.grievance_id
-                                JOIN 
-                                    action_code ac ON ac.action_code_id = a_l.action_code_id
-                                WHERE 
-                                    g_a.assigned_by = $1
-                                    AND a.status = 'accepted'
-                                    AND NOT EXISTS (
-                                        SELECT 1 
-                                        FROM action_log sub_a_l 
-                                        WHERE sub_a_l.grievance_id = g.grievance_id 
-                                          AND sub_a_l.action_code_id = 7
-                                    );
+                                    SELECT DISTINCT
+    g.description,
+    u1.name AS officer_name,
+    g.grievance_id,
+    latest_action.action_code_id AS latest_action_code_id
+FROM 
+    grievances g
+JOIN 
+    atr_reports a_r ON a_r.grievance_id = g.grievance_id
+JOIN 
+    atr_review a ON a.atr_id = a_r.grievance_id
+JOIN 
+    grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+JOIN 
+    users u1 ON u1.user_id = g_a.assigned_to
+LEFT JOIN (
+    -- Subquery to get the latest action for each grievance
+    SELECT 
+        grievance_id, 
+        action_code_id
+    FROM 
+        action_log al
+    WHERE 
+        (al.grievance_id, al.action_timestamp) IN (
+            SELECT 
+                grievance_id, 
+                MAX(action_timestamp) 
+            FROM action_log 
+            GROUP BY grievance_id
+        )
+) latest_action ON latest_action.grievance_id = g.grievance_id
+WHERE 
+    g_a.assigned_by = $1
+    AND a.status = 'accepted'
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM action_log sub_a_l 
+        WHERE sub_a_l.grievance_id = g.grievance_id 
+          AND sub_a_l.action_code_id IN (7, 4)
+    );
 `, [user_id]);
     
       return result.rowCount;
