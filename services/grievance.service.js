@@ -118,27 +118,28 @@ class Grievances {
         return grievanceMedia;
     }
 
-    async getGrievance(complainantId) {
+async getGrievance(complainantId) {
   try {
+    // Fetch all grievances
     const result = await pool.query(
       `
         SELECT 
-            g.*,
-            a_l.action_timestamp,
-            ac.action_code_id,
-            ac.code AS action_description
+            g.grievance_id,
+            g.title,
+            g.description,
+            g.created_at AS submission_time,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM action_log a_l 
+                    WHERE a_l.grievance_id = g.grievance_id AND a_l.action_code_id = 7
+                ) 
+                THEN true 
+                ELSE false 
+            END AS isDisposed
         FROM Grievances g
-        LEFT JOIN LATERAL (
-            SELECT 
-                a.action_timestamp,
-                a.action_code_id
-            FROM action_log a
-            WHERE a.grievance_id = g.grievance_id
-            ORDER BY a.action_timestamp DESC
-            LIMIT 1
-        ) a_l ON true
-        LEFT JOIN action_code ac ON a_l.action_code_id = ac.action_code_id
-        WHERE g.complainant_id = $1;
+        WHERE g.complainant_id = $1
+        ORDER BY g.created_at DESC;
       `,
       [complainantId]
     );
@@ -149,7 +150,7 @@ class Grievances {
     const grievancesWithMedia = await Promise.all(
       grievances.map(async (grievance) => {
         const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
-        
+
         // Convert MongoDB response to an array of media
         const images = media.map((item) => item.image).filter(Boolean);
         const documents = media.map((item) => item.document).filter(Boolean);
@@ -158,18 +159,17 @@ class Grievances {
           ...grievance,
           media: {
             images,
-            documents
-          }
+            documents,
+          },
         };
       })
     );
 
     return grievancesWithMedia;
   } catch (e) {
-    throw new Error(`Error fetching grievance with media: ${e.message}`);
+    throw new Error(`Error fetching grievances with disposed status: ${e.message}`);
   }
 }
-
 
 
     async ReminderEligibility(user_id) {

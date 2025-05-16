@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import bcrypt from 'bcryptjs';
 
 class Forms{
     async getDistricts(){
@@ -95,13 +96,11 @@ class Forms{
 
     async forgotPassword(email, password) {
         try {
+            console.log(".........");
             const hashedPassword = await bcrypt.hash(password, 12);
+            console.log(hashedPassword);
+            const query = await pool.query(`Update users set password = $1 where email = $2`, [hashedPassword, email]);
 
-            const query = await pool.query(`Update table users set password = $1 where email = $2`, [hashedPassword, email]);
-
-            then(() => {
-            console.log("Password Updated");
-        }) 
         }
         catch (error) {
             throw (error);

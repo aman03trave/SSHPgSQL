@@ -1,6 +1,7 @@
 import Grievances from "../services/grievance.service.js";
 import pool from '../config/db.js';
 import Grievance_Media from "../model/grievance_media.model.js";
+import ATR_Media from "../model/atr_media.model.js";
 
 const grievanceService = new Grievances();
 
@@ -267,4 +268,70 @@ export const Display_Action_Log = async(req, res, next) => {
     } catch (error) {
         throw (error);
     }
+}
+
+export const Get_Disposed_Complainant = async(req, res) => {
+  try {
+    console.log("Inside get disposed function.");
+
+    const user_id = req.user.user_id;
+    console.log(user_id);
+     const result = await pool.query(`
+  SELECT 
+    g.grievance_id,
+    g.title,
+    g.description,
+    g.created_at AS submission_time,
+    a_l.action_timestamp AS disposed_time
+FROM grievances g
+JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
+WHERE 
+    a_l.action_code_id = 7 AND 
+    EXISTS (
+        SELECT 1 
+        FROM Complainants c 
+        WHERE c.complainant_id = g.complainant_id AND c.user_id = $1
+    )
+ORDER BY a_l.action_timestamp DESC;
+
+`, [user_id]);
+
+const grievances = [];
+
+for (const row of result.rows) {
+  // Fetch all media associated with the grievance
+  const media = await Grievance_Media.find({ grievanceId: row.grievance_id });
+
+  // Separate images and documents
+  const images = media.filter(m => m.image).map(m => m.image);
+  const documents = media.filter(m => m.document).map(m => m.document);
+
+  // Fetch all ATR media associated with the grievance (assuming multiple ATR documents are possible)
+  const atrMedia = await ATR_Media.find({ atr_id: row.grievance_id });
+
+  grievances.push({
+    grievance_id: row.grievance_id,
+    title: row.title,
+    description: row.description,
+    submission_time: row.submission_time,
+    disposed_time: row.disposed_time,
+    grievance_media: {
+      images: images,
+      documents: documents
+    },
+    final_atr_report: atrMedia.length > 0 ? atrMedia.map(atr => ({
+      document: atr.document,
+      uploaded_time: atr._id.getTimestamp()
+    })) : null
+  });
+}
+
+// return grievances;
+console.log(grievances);
+
+res.status(200).json(grievances);
+
+  } catch (error) {
+    throw (error);
+  }
 }

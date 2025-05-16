@@ -177,13 +177,13 @@ export const get_New_Grievance_Count = async (req, res, next) => {
 export const getBlockOfficersWithGrievanceCount = async (req, res) => {
   const user_id = req.user.user_id;
   const grievanceId = req.query.grievance_id;
-  console.log(grievanceId);
+
   if (!grievanceId) {
     return res.status(400).json({ error: "Missing grievance_id in query" });
   }
 
   try {
-    // Step 1: Verify district from authenticated officer
+    // Step 1: Verify the district from the authenticated officer
     const districtResult = await pool.query(
       'SELECT district_id FROM officer_info WHERE officer_id = $1',
       [user_id]
@@ -207,25 +207,35 @@ export const getBlockOfficersWithGrievanceCount = async (req, res) => {
 
     const block_id = grievanceResult.rows[0].block_id;
 
-    // Step 3: Fetch officers based on block + district
+    // Step 3: Fetch officers based on block + district and count active grievances
     const officersResult = await pool.query(`
-      SELECT  
+      SELECT 
         u.user_id AS officer_id,
         u.name AS officer_name,
-        COUNT(ga.grievance_id) AS grievance_count
-      FROM officer_info oi
-      JOIN users u ON oi.officer_id = u.user_id
-      LEFT JOIN grievance_assignment ga ON oi.officer_id = ga.assigned_to
-      WHERE oi.district_id = $1 AND oi.block_id = $2
-      GROUP BY u.user_id, u.name
+        COUNT(DISTINCT ga.grievance_id) AS grievance_count
+      FROM 
+        officer_info oi
+      JOIN 
+        users u ON oi.officer_id = u.user_id
+      LEFT JOIN 
+        grievance_assignment ga ON oi.officer_id = ga.assigned_to
+      LEFT JOIN 
+        action_log al ON al.grievance_id = ga.grievance_id 
+        AND al.action_code_id NOT IN (7) -- Exclude disposed grievances
+      WHERE 
+        oi.district_id = $1 
+        AND oi.block_id = $2
+      GROUP BY 
+        u.user_id, u.name
     `, [district_id, block_id]);
-    console.log(officersResult.rows);
+
     res.status(200).json(officersResult.rows);
   } catch (error) {
     console.error('Error fetching block officers:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 
 
 
@@ -261,18 +271,53 @@ export const getAssignedGrievances = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        g.title, 
+        g.grievance_id,
+        g.title,
         g.description,
+        g.created_at,
+        b.block_name,
+        s.school_name,
         u.name AS assigned_to_name,
         ga.assigned_at
       FROM grievances g
       JOIN grievance_assignment ga ON g.grievance_id = ga.grievance_id
+      JOIN blocks b ON b.block_id = g.block_id
+      JOIN school s ON s.school_id = g.school_id
       JOIN Complainants c ON g.complainant_id = c.complainant_id
       JOIN Users u ON ga.assigned_to = u.user_id
       WHERE ga.assigned_by = $1
     `, [user_id]);
 
-    res.json(result.rows);
+
+    const grievanceRows = result.rows;
+
+    // 🔎 Fetching all media for each grievance from MongoDB
+    const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
+        
+        // 🔎 Map images and documents into separate arrays
+        const images = media
+          .filter((item) => item.image)
+          .map((item) => item.image);
+
+        const documents = media
+          .filter((item) => item.document)
+          .map((item) => item.document);
+
+        // 🔄 Structure the response object
+        return {
+          ...grievance,
+          grievance_media: {
+            images,
+            documents
+          }
+        };
+      }
+    )
+  )
+
+    res.json(grievances);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

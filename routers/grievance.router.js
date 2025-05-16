@@ -1,5 +1,5 @@
 import express from "express";
-import { addGrievance, getGrievance, addReminder, getReminderStatus, addActionLog, checkReminderEligibility, get_Public_Grievance, Display_Action_Log } from "../controllers/grievance.controller.js";
+import { addGrievance, getGrievance, addReminder, getReminderStatus, addActionLog, checkReminderEligibility, get_Public_Grievance, Display_Action_Log, Get_Disposed_Complainant } from "../controllers/grievance.controller.js";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 import {verifyToken} from '../middleware/verifytokenMiddleware.js'
 import upload from '../middleware/uploadPic.js';
@@ -33,5 +33,7 @@ router.get('/displayATRWG', verifyToken, DisplayGrievancewithATR);
 router.get('/displayL_G', verifyToken, DisplayLatestGrievance);
 router.get('/get_Public_Grievance', verifyToken, get_Public_Grievance);
 router.post('/display_AL', Display_Action_Log);
+
+router.get('/complainant_disposed_grievances', verifyToken, Get_Disposed_Complainant)
 
 export default router;

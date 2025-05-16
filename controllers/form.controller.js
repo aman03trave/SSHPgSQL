@@ -75,17 +75,22 @@ export const getUserProfile = async(req, res, next) => {
     }
 }
 
-export const ForgetPassword = async(req, res) => {
+export const ForgetPassword = async (req, res) => {
     try {
-        const {email, password} = req.body;
+        const { email, password } = req.body;
 
-        const updatePassword = form.forgotPassword(email, password);
+        // Update password in the database
+        const updatePassword = await form.forgotPassword(email, password);
 
-        res.json({message:"Password updated successfully"});
+        res.json({ message: "Password updated successfully" });
     } catch (error) {
-        
+        console.error(error);
+        res.status(500).json({ message: "Error updating password" });
     }
-}
+};
+
+
+
 
 
 
