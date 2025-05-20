@@ -397,50 +397,51 @@ export const Display_ATR_L1 = async (req, res, next) => {
   try {
     console.log("Inside the display_atr function");
     const user_id = req.user.user_id;
-    const result = await pool.query(`
-                                    SELECT DISTINCT
-                                          g.title,
-                                          g.description,
-                                          u1.name AS officer_name,
-                                          g.grievance_id,
-                                          latest_action.action_code_id AS latest_action_code_id
-                                      FROM 
-                                          grievances g
-                                      JOIN 
-                                          atr_reports a_r ON a_r.grievance_id = g.grievance_id
-                                      JOIN 
-                                          atr_review a ON a.atr_id = a_r.grievance_id
-                                      JOIN 
-                                          grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-                                      JOIN 
-                                          users u1 ON u1.user_id = g_a.assigned_to
-                                      LEFT JOIN (
-                                          -- Subquery to get the latest action for each grievance
+    const result = await pool.query(
+                                    `
+                                  SELECT DISTINCT
+                                  g.title,
+                                  g.description,
+                                  u1.name AS officer_name,
+                                  g.grievance_id,
+                                  latest_action.action_code_id AS latest_action_code_id
+                              FROM 
+                                  grievances g
+                              JOIN 
+                                  atr_reports a_r ON a_r.grievance_id = g.grievance_id
+                              JOIN 
+                                  grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
+                              JOIN 
+                                  users u1 ON u1.user_id = g_a.assigned_to
+                              LEFT JOIN atr_review a ON a.atr_id = a_r.grievance_id  -- ✅ Corrected join key
+                              LEFT JOIN (
+                                  -- Subquery to get the latest action for each grievance
+                                  SELECT 
+                                      grievance_id, 
+                                      action_code_id
+                                  FROM 
+                                      action_log al
+                                  WHERE 
+                                      (al.grievance_id, al.action_timestamp) IN (
                                           SELECT 
                                               grievance_id, 
-                                              action_code_id
-                                          FROM 
-                                              action_log al
-                                          WHERE 
-                                              (al.grievance_id, al.action_timestamp) IN (
-                                                  SELECT 
-                                                      grievance_id, 
-                                                      MAX(action_timestamp) 
-                                                  FROM action_log 
-                                                  GROUP BY grievance_id
-                                              )
-                                      ) latest_action ON latest_action.grievance_id = g.grievance_id
-                                      WHERE 
-                                          g_a.assigned_by = $1
-                                          AND a.status = 'accepted'
-                                          AND NOT EXISTS (
-                                              SELECT 1 
-                                              FROM action_log sub_a_l 
-                                              WHERE sub_a_l.grievance_id = g.grievance_id 
-                                                AND sub_a_l.action_code_id IN (7, 4)
-                                          );
+                                              MAX(action_timestamp) 
+                                          FROM action_log 
+                                          GROUP BY grievance_id
+                                      )
+                              ) latest_action ON latest_action.grievance_id = g.grievance_id
+                              WHERE 
+                                  g_a.assigned_by = $1
+                                 
+                                  AND NOT EXISTS (
+                                      SELECT 1 
+                                      FROM action_log sub_a_l 
+                                      WHERE sub_a_l.grievance_id = g.grievance_id 
+                                        AND sub_a_l.action_code_id IN (7, 4)
+                                  );
 
-`, [user_id]);
+
+                              `, [user_id]);
     const grievanceRows = result.rows;
 
     const grievances = await Promise.all(
@@ -986,43 +987,48 @@ export const getAcceptedGrievance = async (req, res) => {
   try {
     // 🔎 Fetch grievances from PostgreSQL
     const result = await pool.query(
-      `
-                                  SELECT 
-                                  g.grievance_id,
-                                  g.title,
-                                  g.description,
-                                  u.name AS assigned_by,
-                                  ga.assigned_at,
-                                  COALESCE(latest_action.action_code_id, 0) AS latest_action_code_id
-                              FROM grievance_assignment ga
-                              JOIN grievances g ON g.grievance_id = ga.grievance_id
-                              JOIN users u ON u.user_id = ga.assigned_by
-                              LEFT JOIN (
-                                  -- Subquery to fetch the latest action per grievance
-                                  SELECT 
-                                      grievance_id, 
-                                      action_code_id
-                                  FROM action_log
-                                  WHERE (grievance_id, action_timestamp) IN (
-                                      SELECT 
-                                          grievance_id, 
-                                          MAX(action_timestamp) 
-                                      FROM action_log
-                                      GROUP BY grievance_id
-                                  )
-                              ) latest_action ON latest_action.grievance_id = ga.grievance_id
-                              WHERE ga.assigned_to = $1
-                                AND (
-                                    -- Checking if any action_code_id exists historically
-                                    EXISTS (
-                                        SELECT 1 
-                                        FROM action_log sub_al
-                                        WHERE sub_al.grievance_id = ga.grievance_id 
-                                          AND sub_al.action_code_id IN (3, 5, 6, 9)
-                                    ) 
-                                    OR latest_action.action_code_id IS NULL
-                                );
-
+      `SELECT DISTINCT
+    g.grievance_id,
+    g.title,
+    g.description,
+    u.name AS assigned_by,
+    ga.assigned_at,
+    COALESCE(latest_action.action_code_id, 0) AS action_code_id
+FROM grievance_assignment ga
+JOIN grievances g ON g.grievance_id = ga.grievance_id
+JOIN users u ON u.user_id = ga.assigned_by
+LEFT JOIN (
+    -- Subquery to fetch the latest action per grievance
+    SELECT 
+        grievance_id, 
+        action_code_id
+    FROM action_log al
+    WHERE (al.grievance_id, al.action_timestamp) IN (
+        SELECT 
+            grievance_id, 
+            MAX(action_timestamp) 
+        FROM action_log
+        GROUP BY grievance_id
+    )
+) latest_action ON latest_action.grievance_id = ga.grievance_id
+WHERE ga.assigned_to = $1
+  AND (
+      (
+          EXISTS (
+              SELECT 1 
+              FROM action_log sub_al
+              WHERE sub_al.grievance_id = ga.grievance_id 
+                AND sub_al.action_code_id IN (3, 5, 6, 9)
+          ) 
+          OR latest_action.action_code_id IS NULL
+      )
+  )
+  AND NOT EXISTS (
+      SELECT 1 
+      FROM action_log al
+      WHERE al.grievance_id = ga.grievance_id 
+        AND al.action_code_id = 7
+  );
       `,
       [user_id]
     );
@@ -1195,29 +1201,57 @@ export const L2_countUserNotification = async (req, res) => {
 };
 
 export const Return_Grievance = async (req, res) => {
-  
+  const { grievance_id, actioncodeId } = req.body;
+  const user_id = req.user.user_id;
+  console.log(grievance_id);
+
   try {
-  await pool.query('BEGIN');
+    if (actioncodeId === 8) {
+      // Start transaction
+      await pool.query('BEGIN');
 
-  await pool.query(`
-    DELETE FROM grievance_assignments 
-    WHERE assigned_to = $1 AND grievance_id = $2
-  `, [user_id, grievance_id]);
+      // First query: delete from grievance_assignment
+      await pool.query(
+        `DELETE FROM grievance_assignment
+         WHERE assigned_to = $1 AND grievance_id = $2`,
+        [user_id, grievance_id]
+      );
 
-  await pool.query(`
-    DELETE FROM action_log 
-    WHERE user_id = $1 AND action_code_id IN (2, 9)
-  `, [user_id]);
+      // Second query: delete from action_log
+      await pool.query(
+        `INSERT INTO action_log (grievance_id, user_id, action_code_id)
+         VALUES ($1, $2, $3)`,
+        [grievance_id, user_id, actioncodeId]
+      );
 
-  await pool.query('COMMIT');
-  console.log("Records deleted successfully.");
-} catch (error) {
-  await pool.query('ROLLBACK');
-  console.error("Transaction failed: ", error);
-  throw error;
-}
+      // Commit transaction if both succeed
+      await pool.query('COMMIT');
+      res.json({ message: "Records deleted successfully" });
+      console.log("Records deleted successfully.");
 
-}
+    } else if (actioncodeId === 9) {
+      // Just insert into action_log for actioncodeId 9
+      await pool.query(
+        `INSERT INTO action_log (grievance_id, user_id, action_code_id)
+         VALUES ($1, $2, $3)`,
+        [grievance_id, user_id, actioncodeId]
+      );
+      res.json({ message: "Action log inserted successfully" });
+      console.log("Action log inserted successfully.");
+    } else {
+      res.status(400).json({ message: "Invalid actioncodeId" });
+      console.log("Invalid actioncodeId");
+    }
+
+  } catch (error) {
+    // Rollback transaction if any query fails during the transaction
+    await pool.query('ROLLBACK');
+    console.error("Transaction failed: ", error.message);
+    res.status(500).json({ error: "Transaction failed" });
+  }
+};
+
+
 
 
 
@@ -1273,8 +1307,7 @@ export const Get_Returned_Grievance_L2 = async (req, res) => {
           a_l.action_code_id
       FROM grievances g
       JOIN action_log a_l ON a_l.grievance_id = g.grievance_id
-      JOIN grievance_assignment g_a ON g_a.grievance_id = g.grievance_id
-      WHERE a_l.action_code_id = 8 AND g_a.assigned_to = $1
+      WHERE a_l.action_code_id = 8 AND a_l.user_id = $1
     `, [user_id]);
     console.log(result)
     const grievances = result.rows;
@@ -1437,6 +1470,39 @@ console.log(grievances);
 
 res.status(200).json(grievances);
 
+  } catch (error) {
+    throw (error);
+  }
+}
+
+export const GetDisposedL2Count = async (req,res) => {
+  try {
+    const user_id = req.user.user_id;
+    const count = officer.Get_Disposed_L2Count(user_id);
+
+    res.json({count : count});
+  } catch (error) {
+    throw (error);
+  }
+}
+
+export const GetATRL2Count = async (req,res) => {
+  try {
+    const user_id = req.user.user_id;
+    const count = officer.DisplayAtrCountL2(user_id);
+
+    res.json({count : count});
+  } catch (error) {
+    throw (error);
+  }
+}
+
+export const GetReturnedL2Count = async (req,res) => {
+  try {
+    const user_id = req.user.user_id;
+    const count = officer.GetReturnedL2Count(user_id);
+
+    res.json({count : count});
   } catch (error) {
     throw (error);
   }

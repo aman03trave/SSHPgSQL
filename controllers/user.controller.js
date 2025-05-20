@@ -19,7 +19,7 @@ export const RegisterUser = async (req, res, next) => {
     const role_id = await user.getRole_id(role_name);
     const category_id = await user.findCategory(category);
     await user.createUser(
-      name, gender, age, phone, email, password, role_id, category_id,
+       name, gender, age, phone, email, password, role_id, category_id,
       identity_proof_id, identity_proof_number
     );
 

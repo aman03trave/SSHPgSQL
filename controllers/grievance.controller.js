@@ -72,8 +72,8 @@ export const addGrievance = async (req, res, next) => {
 export const getGrievance = async (req, res, next) => {
     try {
         const user_id = req.user.user_id;
-        const complainant_id = await grievanceService.getComplainant(user_id)
-        const grievance = await grievanceService.getGrievance(complainant_id);
+        const complainantId = await grievanceService.getComplainant(user_id)
+        const grievance = await grievanceService.getGrievance(complainantId);
         res.json({ status: true, grievance });
     } catch (error) {
         next(error);
@@ -320,6 +320,7 @@ for (const row of result.rows) {
       documents: documents
     },
     final_atr_report: atrMedia.length > 0 ? atrMedia.map(atr => ({
+      version : atr.version,
       document: atr.document,
       uploaded_time: atr._id.getTimestamp()
     })) : null

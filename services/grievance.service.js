@@ -124,22 +124,40 @@ async getGrievance(complainantId) {
     const result = await pool.query(
       `
         SELECT 
-            g.grievance_id,
-            g.title,
-            g.description,
-            g.created_at AS submission_time,
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM action_log a_l 
-                    WHERE a_l.grievance_id = g.grievance_id AND a_l.action_code_id = 7
-                ) 
-                THEN true 
-                ELSE false 
-            END AS isDisposed
-        FROM Grievances g
-        WHERE g.complainant_id = $1
-        ORDER BY g.created_at DESC;
+    g.grievance_id,
+    g.title,
+    g.description,
+    g.created_at AS submission_time,
+    
+    -- ✅ Check if the grievance is disposed
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 
+            FROM action_log a_l 
+            WHERE a_l.grievance_id = g.grievance_id AND a_l.action_code_id = 7
+        ) 
+        THEN true 
+        ELSE false 
+    END AS isDisposed,
+
+    -- ✅ Check if the grievance is in process
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 
+            FROM action_log a_l 
+            WHERE a_l.grievance_id = g.grievance_id AND a_l.action_code_id NOT IN (4, 7)
+        ) 
+        THEN true 
+        ELSE false 
+    END AS isInProcess
+
+FROM 
+    Grievances g
+WHERE 
+    g.complainant_id = $1
+ORDER BY 
+    g.created_at DESC;
+
       `,
       [complainantId]
     );
@@ -178,33 +196,38 @@ async getGrievance(complainantId) {
                 `SELECT * FROM (
     -- Reminder Eligibility Check
     SELECT 
-    g.grievance_id,
-    g.title,
-    'Reminder Eligibility' AS notification_type,
-    GREATEST(
-        g.created_at + INTERVAL '2 hours',
-        COALESCE(MAX(a.action_timestamp), g.created_at) + INTERVAL '2 hours',
-        COALESCE(MAX(r.reminder_timestamp), g.created_at) + INTERVAL '2 hours'
-    ) AS timestamp,
-    (
-        NOW() >= GREATEST(
+        g.grievance_id,
+        g.title,
+        'Reminder Eligibility' AS notification_type,
+        GREATEST(
             g.created_at + INTERVAL '2 hours',
             COALESCE(MAX(a.action_timestamp), g.created_at) + INTERVAL '2 hours',
             COALESCE(MAX(r.reminder_timestamp), g.created_at) + INTERVAL '2 hours'
-        )
-    ) AS can_send_reminder
-FROM 
-    Grievances g
-JOIN 
-    Complainants c ON g.complainant_id = c.complainant_id
-LEFT JOIN 
-    Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
-LEFT JOIN 
-    action_log a ON g.grievance_id = a.grievance_id
-WHERE 
-    c.user_id = $1
-GROUP BY 
-    g.grievance_id, g.title, g.created_at, c.user_id
+        ) AS timestamp,
+        (
+            NOW() >= GREATEST(
+                g.created_at + INTERVAL '2 hours',
+                COALESCE(MAX(a.action_timestamp), g.created_at) + INTERVAL '2 hours',
+                COALESCE(MAX(r.reminder_timestamp), g.created_at) + INTERVAL '2 hours'
+            )
+        ) AND NOT EXISTS (
+            SELECT 1 
+            FROM action_log al 
+            WHERE al.grievance_id = g.grievance_id 
+            AND al.action_code_id = 7
+        ) AS can_send_reminder
+    FROM 
+        Grievances g
+    JOIN 
+        Complainants c ON g.complainant_id = c.complainant_id
+    LEFT JOIN 
+        Reminders r ON g.grievance_id = r.grievance_id AND r.user_id = c.user_id
+    LEFT JOIN 
+        action_log a ON g.grievance_id = a.grievance_id
+    WHERE 
+        c.user_id = $1
+    GROUP BY 
+        g.grievance_id, g.title, g.created_at, c.user_id
 
 
     UNION ALL
@@ -302,9 +325,7 @@ GROUP BY
         c.user_id = $1
 ) AS notifications
 ORDER BY timestamp DESC;
-
-
-            `, [user_id]);
+`, [user_id]);
             return result.rows;
         } catch (error) {
             throw new Error(`Error checking reminder eligibility: '${error}'`);
@@ -440,22 +461,39 @@ ORDER BY timestamp DESC;
 
             `, [complainantId]);
 
-            const grievances = result.rows;
+            const grievanceRows = result.rows;
 
-            const grievancesWithMedia = await Promise.all(
-                grievances.map(async (grievance) => {
-                    const media = await Grievance_Media.findOne({ grievanceId: grievance.grievance_id });
-                    return {
-                        ...grievance,
-                        media: media ? {
-                            image: media.image,
-                            document: media.document
-                        } : null
-                    };
-                })
-            );
+           const grievances = await Promise.all(
+      grievanceRows.map(async (grievance) => {
+        
+        const media = await Grievance_Media.find({ grievanceId: grievance.grievance_id });
 
-            return grievancesWithMedia;
+       
+        const images = media.filter((item) => item.image).map((item) => item.image);
+        const documents = media.filter((item) => item.document).map((item) => item.document);
+
+       
+        const atrVersions = await ATR_Media.find({ atr_id: grievance.grievance_id }).sort({ version: 1 });
+
+       
+        const ATR = atrVersions.map((atr) => ({
+          version: [atr.version],  
+          documents: atr.document ? [atr.document] : []
+        }));
+
+       
+        return {
+          ...grievance,
+          grievance_media: {
+            images,
+            documents,
+          },
+          ATR,
+        };
+      })
+    );
+
+            return grievances;
         } catch (e) {
             throw new Error(`Error fetching grievance with media: ${e.message}`);
         }
